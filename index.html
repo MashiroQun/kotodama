@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>言霊チューナー</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #030303;
+            --text-color: #FFFFFF;
+            --accent-color: #FF3333; 
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-blur: blur(15px);
+        }
+
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Inter', sans-serif; font-weight: 100;
+            overflow: hidden; 
+        }
+
+        #visualizer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+        #bonji-bg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Noto Sans Siddham', sans-serif; font-size: 55vh; 
+            color: rgba(2, 2, 2, 1); 
+            -webkit-text-stroke: 1px rgba(255,255,255,0.02);
+            text-shadow: 0 0 20px rgba(0,0,0,1), 0 0 15px var(--accent-color);
+            opacity: 0.3; z-index: 1; pointer-events: none;
+            transition: color 0.5s, opacity 0.5s;
+        }
+
+        #ui-layer {
+            position: relative; z-index: 2; 
+            display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+            height: 100%; padding: 20px; box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent 40%, rgba(0,0,0,0.8));
+            pointer-events: none;
+        }
+        #ui-layer > * { pointer-events: auto; }
+
+        header { flex: 0 0 auto; text-align: center; margin-top: 10px; }
+        .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 5px; color: #FFF; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
+        .title-sub { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 5px; transition: color 0.5s; }
+
+        #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
+        .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: 20px; letter-spacing: 6px; opacity: 0.8; margin-bottom: -15px; text-shadow: 0 2px 5px rgba(0,0,0,0.9); }
+        
+        .kanji {
+            font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: 130px; 
+            color: var(--accent-color);
+            text-shadow: 0px 5px 15px rgba(0,0,0,1), 0px 0px 10px rgba(0,0,0,0.8), 0px 0px 30px rgba(0,0,0,0.6);
+            margin-bottom: 5px; transition: color 0.5s;
+        }
+        
+        .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: 24px; letter-spacing: 4px; font-weight: 400; color: #EEE; text-shadow: 0 2px 5px rgba(0,0,0,0.9); }
+        .note-display { font-size: 14px; opacity: 1; margin-top: 10px; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #DDD; text-shadow: 0 2px 5px rgba(0,0,0,0.9);}
+
+        #control-panel {
+            flex: 0 0 auto; background-color: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 15px 20px; text-align: center; margin-bottom: 5px; width: 90%; max-width: 400px;
+        }
+
+        #meaning { font-size: 14px; opacity: 0.9; margin-bottom: 15px; letter-spacing: 2px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
+        
+        #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 15px; }
+        .chakra-btn {
+            flex: 1; aspect-ratio: 1 / 1; max-width: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3); cursor: pointer; transition: all 0.3s;
+            display: flex; justify-content: center; align-items: center;
+            color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14px; padding: 0;
+        }
+        .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 15px rgba(255,255,255,0.9); transform: scale(1.1); color: #FFF; text-shadow: 0 0 5px #000; }
+
+        #action-btn {
+            background: rgba(0,0,0,0.6); border: 2px solid var(--accent-color); color: var(--accent-color);
+            padding: 12px 30px; border-radius: 35px; font-size: 18px; font-family: 'Inter', sans-serif;
+            letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.3s;
+            text-shadow: 0 0 10px var(--accent-color); width: 100%; margin-bottom: 15px;
+        }
+        #action-btn:active { background-color: var(--accent-color); color: #000; text-shadow: none; }
+
+        #debug-panel { display: flex; justify-content: space-between; gap: 10px; width: 100%; }
+        .toggle-btn {
+            flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: 11px;
+            padding: 10px 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
+        }
+        .toggle-btn:active { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <canvas id="visualizer"></canvas>
+    <div id="bonji-bg">𑖀</div>
+
+    <div id="ui-layer">
+        <header>
+            <div class="title-main">言霊チューナー</div>
+            <div class="title-sub">CHAKRA TUNER</div>
+        </header>
+
+        <div id="central-node">
+            <div id="yomi-display" class="ruby-text">ち</div>
+            <div id="kanji-display" class="kanji">地</div>
+            <div id="on-display" class="on-guide">ア / [ a ]</div>
+            <div id="note-display" class="note-display">C3 (ド) / 131Hz</div>
+        </div>
+        
+        <div id="control-panel">
+            <div id="meaning">土 / 基盤 / 生命</div>
+            <div id="chakra-selector"></div>
+            <button id="action-btn">TUNING START</button>
+            
+            <div id="debug-panel">
+                <button id="btn-vis" class="toggle-btn">VIS: 統合3D(粒)</button>
+                <button id="btn-oct" class="toggle-btn">OCT: 基本音階</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chakraData = [
+            { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命" },
+            { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: "#FF8C00", bonji: "𑖪", meaning: "水 / 創造 / 感情" },
+            { id: 3, kanji: "陽", yomi: "よう", on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: "#FFD700", bonji: "𑖨", meaning: "火 / 意志 / 活力" },
+            { id: 4, kanji: "和", yomi: "わ", on: "オ", phonetic: "o", note: "F3", solfege: "ファ", color: "#00CC66", bonji: "𑖮", meaning: "風 / 調和 / 愛" },
+            { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: "#00BFFF", bonji: "𑖏", meaning: "空 / 表現 / 空間" },
+            { id: 6, kanji: "理", yomi: "ことわり", on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: "#4169E1", bonji: "𑖌", meaning: "識 / 直感 / 叡智" },
+            { id: 7, kanji: "宙", yomi: "そら・くう", on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越" }
+        ];
+
+        let currentChakraIndex = 0; 
+        let isTuning = false;
+        let oscStarted = false; // オシレーターの起動状態を管理
+
+        let visMode = 2; 
+        const visNames = ['VIS: 2Dサイマ(粒)', 'VIS: 3Dトーラス(粒)', 'VIS: 統合3D(粒)'];
+
+        let octMode = 0; 
+        const octNames = ['OCT: 基本音階', 'OCT: +1高い'];
+
+        // --- 音響エンジンの最終調整（破裂音の完全除去） ---
+        const reverb = new Tone.Freeverb({ roomSize: 0.9, dampening: 3000 }).toDestination();
+        const chorus = new Tone.Chorus({ frequency: 0.2, delayTime: 3.5, depth: 0.8 }).connect(reverb).start();
+        const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(chorus);
+        
+        // 破裂音を防ぐ「エンベロープ（音のフェードイン・フェードアウト制御）」を追加
+        const env = new Tone.AmplitudeEnvelope({
+            attack: 1.5,  // スタート時、1.5秒かけて優しく立ち上がる
+            decay: 0.0,
+            sustain: 1.0,
+            release: 3.0  // ストップ時、3秒かけて滑らかに消えていく
+        }).connect(filter);
+        
+        // オシレーターを直接鳴らさず、エンベロープ（env）に繋ぐ
+        const osc = new Tone.Oscillator({ 
+            type: "triangle", 
+            volume: 5 
+        }).connect(env);
+
+        const bonjiBg = document.getElementById('bonji-bg');
+        const kanjiDisplay = document.getElementById('kanji-display');
+        const yomiDisplay = document.getElementById('yomi-display');
+        const onDisplay = document.getElementById('on-display');
+        const noteDisplay = document.getElementById('note-display');
+        const meaningDisplay = document.getElementById('meaning');
+        const actionBtn = document.getElementById('action-btn');
+        const chakraSelector = document.getElementById('chakra-selector');
+        
+        const btnVis = document.getElementById('btn-vis');
+        const btnOct = document.getElementById('btn-oct');
+
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d', { alpha: false }); 
+        
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        chakraData.forEach((chakra, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'chakra-btn';
+            btn.style.backgroundColor = chakra.color;
+            btn.innerText = chakra.id; 
+            btn.onclick = () => selectChakra(index);
+            chakraSelector.appendChild(btn);
+        });
+
+        function updateAudioAndUI() {
+            const data = chakraData[currentChakraIndex];
+            kanjiDisplay.innerText = data.kanji;
+            yomiDisplay.innerText = data.yomi;
+            bonjiBg.innerText = data.bonji; 
+            onDisplay.innerText = `${data.on} / [ ${data.phonetic} ]`;
+            meaningDisplay.innerText = data.meaning;
+            
+            const baseFreq = Tone.Frequency(data.note);
+            const targetFreq = baseFreq.transpose(octMode * 12); 
+            
+            noteDisplay.innerText = `${data.note} (${data.solfege}) / ${Math.round(targetFreq.toFrequency())}Hz`;
+            
+            document.documentElement.style.setProperty('--accent-color', data.color);
+            document.querySelectorAll('.chakra-btn').forEach((btn, i) => {
+                btn.className = `chakra-btn ${i === currentChakraIndex ? 'active' : ''}`;
+                btn.style.backgroundColor = i === currentChakraIndex ? data.color : 'rgba(255,255,255,0.1)';
+            });
+
+            if (isTuning) {
+                osc.frequency.rampTo(targetFreq, 1.5);
+            }
+        }
+
+        function selectChakra(index) {
+            currentChakraIndex = index;
+            updateAudioAndUI();
+        }
+
+        btnVis.onclick = () => { visMode = (visMode + 1) % 3; btnVis.innerText = visNames[visMode]; };
+        btnOct.onclick = () => { octMode = (octMode + 1) % 2; btnOct.innerText = octNames[octMode]; updateAudioAndUI(); };
+
+        selectChakra(currentChakraIndex);
+
+        actionBtn.onclick = async () => {
+            if (!isTuning) {
+                await Tone.start();
+                
+                // オシレーター自体は無音で動かし続ける
+                if (!oscStarted) {
+                    osc.start();
+                    oscStarted = true;
+                }
+
+                const targetFreq = Tone.Frequency(chakraData[currentChakraIndex].note).transpose(octMode * 12);
+                osc.frequency.value = targetFreq.toFrequency();
+                
+                // エンベロープを開いて、滑らかに音を出す
+                env.triggerAttack();
+                
+                actionBtn.innerText = "TUNING STOP";
+                bonjiBg.style.opacity = "0.6"; 
+                isTuning = true;
+                draw();
+            } else {
+                // エンベロープを閉じて、滑らかに音を消す
+                env.triggerRelease();
+                
+                actionBtn.innerText = "TUNING START";
+                bonjiBg.style.opacity = "0.3";
+                
+                bonjiBg.style.transform = `translate(-50%, -50%) scale(1)`;
+                bonjiBg.style.textShadow = `0 0 20px rgba(0,0,0,1), 0 0 15px ${chakraData[currentChakraIndex].color}`;
+
+                isTuning = false;
+                
+                ctx.globalCompositeOperation = "source-over";
+                ctx.fillStyle = "#030303";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+
+        function colorToRGBA(hex, alpha) {
+            let r = parseInt(hex.slice(1, 3), 16);
+            let g = parseInt(hex.slice(3, 5), 16);
+            let b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function draw() {
+            if (!isTuning) return;
+            requestAnimationFrame(draw);
+
+            const time = performance.now() * 0.001;
+            const pulse = (Math.sin(time * Math.PI / 2) + 1) / 2; 
+
+            // 梵字の脈動エフェクト
+            const color = chakraData[currentChakraIndex].color;
+            const scaleAmount = 1 + (pulse * 0.15); 
+            const shadowSpread = 20 + (pulse * 40); 
+
+            bonjiBg.style.transform = `translate(-50%, -50%) scale(${scaleAmount})`;
+            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${shadowSpread}px ${color}`;
+
+            ctx.globalCompositeOperation = "source-over";
+            ctx.fillStyle = "rgba(3, 3, 3, 0.35)"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = "lighter";
+
+            const driftX = Math.sin(time * 0.3) * (canvas.width * 0.1);
+            const driftY = Math.sin(time * 0.6) * (canvas.height * 0.08);
+
+            const cx = (canvas.width / 2) + driftX;
+            const baseYOffset = (3 - currentChakraIndex) * (canvas.height * 0.04); 
+            const cy = (canvas.height / 2) + baseYOffset + driftY; 
+
+            const chId = chakraData[currentChakraIndex].id; 
+
+            if (visMode === 0) {
+                const a = chId; const b = chId + 1;
+                const scale = (Math.min(canvas.width, canvas.height) * 0.35) + pulse * 40;
+                const steps = 150; 
+                ctx.fillStyle = color;
+                for (let i = 0; i < steps; i++) {
+                    const t = (i / steps) * Math.PI * 2;
+                    const px = cx + Math.sin(a * t + time) * scale;
+                    const py = cy + Math.sin(b * t) * scale;
+                    const size = 2 + pulse * 2;
+                    ctx.fillRect(px - size/2, py - size/2, size, size);
+                }
+
+            } else if (visMode === 1) {
+                const numRings = 15; 
+                const pointsPerRing = 20; 
+                const torusRadius = (Math.min(canvas.width, canvas.height) * 0.3) + (pulse * 20);
+                const rBase = (Math.min(canvas.width, canvas.height) * 0.15) + (pulse * 30); 
+
+                for (let i = 0; i < numRings; i++) {
+                    const angle = (i / numRings) * Math.PI * 2 + time * 0.3;
+                    const ringCx = Math.cos(angle) * torusRadius;
+                    const ringCy = Math.sin(angle) * torusRadius;
+                    
+                    for (let j = 0; j < pointsPerRing; j++) {
+                        const phi = (j / pointsPerRing) * Math.PI * 2 + time * 0.5;
+                        let x3d = ringCx + Math.cos(phi) * rBase * Math.cos(angle);
+                        let y3d = ringCy + Math.cos(phi) * rBase * Math.sin(angle);
+                        let z3d = Math.sin(phi) * rBase;
+
+                        const rotX = Math.PI / 3;
+                        let y2 = y3d * Math.cos(rotX) - z3d * Math.sin(rotX);
+                        let z2 = y3d * Math.sin(rotX) + z3d * Math.cos(rotX);
+                        y3d = y2; z3d = z2;
+
+                        const focal = 300;
+                        const scale = focal / (focal + z3d);
+                        const px = cx + x3d * scale;
+                        const py = cy + y3d * scale;
+
+                        const pAlpha = 0.5 - (chId - 1) * 0.05; 
+                        ctx.fillStyle = colorToRGBA(color, Math.max(0.1, pAlpha));
+                        
+                        const size = (1 + pulse) * scale * 3;
+                        ctx.fillRect(px - size/2, py - size/2, size, size);
+                    }
+                }
+
+            } else if (visMode === 2) {
+                const baseScale = Math.min(canvas.width, canvas.height) * 0.35;
+                const R = baseScale + (pulse * baseScale * 0.4); 
+                const r = baseScale * 0.4 + (pulse * 30);
+
+                const a = chId; const b = chId + 2;
+                const steps = 400; 
+
+                for (let i = 0; i <= steps; i++) {
+                    const t = (i / steps) * Math.PI * 2;
+                    const u = a * t * 4 + time * 0.4;
+                    const v = b * t * 4 + time * 0.6; 
+
+                    const ripple = Math.sin(chId * 3 * t + time) * (baseScale * 0.15);
+
+                    let x3d = (R + (r + ripple) * Math.cos(v)) * Math.cos(u);
+                    let y3d = (R + (r + ripple) * Math.cos(v)) * Math.sin(u);
+                    let z3d = (r + ripple) * Math.sin(v);
+
+                    const rotX = time * 0.2;
+                    let y2 = y3d * Math.cos(rotX) - z3d * Math.sin(rotX);
+                    let z2 = y3d * Math.sin(rotX) + z3d * Math.cos(rotX);
+                    y3d = y2; z3d = z2;
+
+                    const rotY = time * 0.25;
+                    let x2 = x3d * Math.cos(rotY) + z3d * Math.sin(rotY);
+                    let z3 = -x3d * Math.sin(rotY) + z3d * Math.cos(rotY);
+                    x3d = x2; z3d = z3;
+
+                    const focal = 600;
+                    const zPersp = focal + z3d;
+                    const scale = focal / (zPersp > 0.1 ? zPersp : 0.1);
+
+                    const px = cx + x3d * scale;
+                    const py = cy + y3d * scale;
+
+                    const pAlpha = 0.35 - (chId - 1) * 0.03; 
+                    ctx.fillStyle = colorToRGBA(color, Math.max(0.08, pAlpha));
+
+                    const size = (1 + pulse * 1.0) * scale * 3.5;
+                    ctx.fillRect(px - size/2, py - size/2, size, size);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
