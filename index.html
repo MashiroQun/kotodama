@@ -170,12 +170,12 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         // ★修正: PixelRatioもモバイルなら0.6に落として負荷を減らす ★
-        const pixelRatio = window.devicePixelRatio > 1 ? (window.innerWidth < 768 ? 0.6 : 1.0) : 1.0;
+        const pixelRatio = window.devicePixelRatio > 1 ? (window.innerWidth < 768 ? 0.4 : 1.0) : 1.0;
         renderer.setPixelRatio(pixelRatio); 
         container.appendChild(renderer.domElement);
 
         // 元のCPU計算方式のためのジオメトリとマテリアル
-        const particleCount = 1000; 
+        const particleCount = 500; 
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
