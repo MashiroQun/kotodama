@@ -126,270 +126,282 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+   // --- スクロール防止（PWA特有の余白やバウンスを防ぐ） ---
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
-        const chakraData = [
-            { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命 / 会陰" },
-            { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪", meaning: "水 / 創造 / 感情 / 丹田" },
-            { id: 3, kanji: "陽", yomi: "よう", on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨", meaning: "火 / 意志 / 活力 / みぞおち" },
-            { id: 4, kanji: "和", yomi: "わ", on: "オ", phonetic: "o", note: "F3", solfege: "ファ", color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮", meaning: "風 / 調和 / 愛 / 胸" },
-            { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏", meaning: "空 / 表現 / 空間 / 喉" },
-            { id: 6, kanji: "理", yomi: "ことわり", on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌", meaning: "識 / 直感 / 叡智 / 眉間" },
-            { id: 7, kanji: "宙", yomi: "そら・くう", on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
-        ];
-        const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
+// --- チャクラ・言霊データ ---
+const chakraData = [
+    { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命 / 会陰" },
+    { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪", meaning: "水 / 創造 / 感情 / 丹田" },
+    { id: 3, kanji: "陽", yomi: "よう", on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨", meaning: "火 / 意志 / 活力 / みぞおち" },
+    { id: 4, kanji: "和", yomi: "わ", on: "オ", phonetic: "o", note: "F3", solfege: "ファ", color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮", meaning: "風 / 調和 / 愛 / 胸" },
+    { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏", meaning: "空 / 表現 / 空間 / 喉" },
+    { id: 6, kanji: "理", yomi: "ことわり", on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌", meaning: "識 / 直感 / 叡智 / 眉間" },
+    { id: 7, kanji: "宙", yomi: "そら・くう", on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
+];
+const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
 
-        let currentChakraIndex = 0; 
-        let isTuning = false; let isStopping = false; let stopStartTime = 0; let oscStarted = false; 
-        let visMode = 2; const visNames = ['VIS: 2Dサイマ', 'VIS: 3Dトーラス', 'VIS: 統合3D'];
-        let tuningMode = 0; const tuneNames = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
+let currentChakraIndex = 0; 
+let isTuning = false; let isStopping = false; let stopStartTime = 0; let oscStarted = false; 
+let visMode = 2; const visNames = ['VIS: 2Dサイマ', 'VIS: 3Dトーラス', 'VIS: 統合3D'];
+let tuningMode = 0; const tuneNames = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
 
-        // --- Tone.js Setup ---
-        const reverb = new Tone.Freeverb({ roomSize: 0.9, dampening: 3000 }).toDestination();
-        const chorus = new Tone.Chorus({ frequency: 0.2, delayTime: 3.5, depth: 0.8 }).connect(reverb).start();
-        const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(chorus);
-        const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0.0, sustain: 1.0, release: 3.0 }).connect(filter);
-        const osc = new Tone.Oscillator({ type: "triangle", volume: 5 }).connect(env);
+// --- Tone.js (Web Audio) Setup ---
+const reverb = new Tone.Freeverb({ roomSize: 0.9, dampening: 3000 }).toDestination();
+const chorus = new Tone.Chorus({ frequency: 0.2, delayTime: 3.5, depth: 0.8 }).connect(reverb).start();
+const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(chorus);
+const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0.0, sustain: 1.0, release: 3.0 }).connect(filter);
+const osc = new Tone.Oscillator({ type: "triangle", volume: 5 }).connect(env);
 
-        // --- Three.js (WebGL) Setup ---
-        const container = document.getElementById('webgl-container');
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 400;
+// --- Three.js (WebGL) Setup ---
+const container = document.getElementById('webgl-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 400;
 
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); 
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
-        container.appendChild(renderer.domElement);
+// ★ バッテリー最適化：アンチエイリアス無効化＆解像度を等倍に制限
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false }); 
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(1.0); // Retina特有の過剰な描画負荷をカット
+container.appendChild(renderer.domElement);
 
-        const particleCount = 1000; 
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+const particleCount = 1000; 
+const geometry = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-        const material = new THREE.PointsMaterial({
-            size: 4,
-            color: 0xFF3333,
-            transparent: true,
-            opacity: 0.0, 
-            blending: THREE.AdditiveBlending, 
-            depthWrite: false
-        });
-        const particleSystem = new THREE.Points(geometry, material);
-        scene.add(particleSystem);
+const material = new THREE.PointsMaterial({
+    size: 4,
+    color: 0xFF3333,
+    transparent: true,
+    opacity: 0.0, 
+    blending: THREE.AdditiveBlending, 
+    depthWrite: false
+});
+const particleSystem = new THREE.Points(geometry, material);
+scene.add(particleSystem);
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-        // --- UI Elements ---
-        const bonjiBg = document.getElementById('bonji-bg');
-        const chakraRing = document.getElementById('chakra-ring'); 
-        const kanjiDisplay = document.getElementById('kanji-display');
-        const yomiDisplay = document.getElementById('yomi-display');
-        const onDisplay = document.getElementById('on-display');
-        const noteDisplay = document.getElementById('note-display');
-        const meaningDisplay = document.getElementById('meaning');
-        const actionBtn = document.getElementById('action-btn');
-        const chakraSelector = document.getElementById('chakra-selector');
-        const btnVis = document.getElementById('btn-vis');
-        const btnTune = document.getElementById('btn-tune');
+// --- UI Elements ---
+const bonjiBg = document.getElementById('bonji-bg');
+const chakraRing = document.getElementById('chakra-ring'); 
+const kanjiDisplay = document.getElementById('kanji-display');
+const yomiDisplay = document.getElementById('yomi-display');
+const onDisplay = document.getElementById('on-display');
+const noteDisplay = document.getElementById('note-display');
+const meaningDisplay = document.getElementById('meaning');
+const actionBtn = document.getElementById('action-btn');
+const chakraSelector = document.getElementById('chakra-selector');
+const btnVis = document.getElementById('btn-vis');
+const btnTune = document.getElementById('btn-tune');
 
-        chakraData.forEach((chakra, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'chakra-btn';
-            btn.style.backgroundColor = chakra.strColor;
-            btn.innerText = chakra.id; 
-            btn.onclick = () => selectChakra(index);
-            chakraSelector.appendChild(btn);
-        });
+chakraData.forEach((chakra, index) => {
+    const btn = document.createElement('button');
+    btn.className = 'chakra-btn';
+    btn.style.backgroundColor = chakra.strColor;
+    btn.innerText = chakra.id; 
+    btn.onclick = () => selectChakra(index);
+    chakraSelector.appendChild(btn);
+});
 
-        function updateAudioAndUI() {
-            const data = chakraData[currentChakraIndex];
-            kanjiDisplay.innerText = data.kanji;
-            yomiDisplay.innerText = data.yomi;
-            bonjiBg.innerText = data.bonji; 
-            onDisplay.innerText = `${data.on} / [ ${data.phonetic} ]`;
-            meaningDisplay.innerText = data.meaning;
-            
-            let targetFreqVal;
-            if (tuningMode === 2) {
-                targetFreqVal = solfeggioFreqs[currentChakraIndex];
-                noteDisplay.innerText = `ソルフェジオ / ${targetFreqVal}Hz`; 
-            } else {
-                const baseFreq = Tone.Frequency(data.note);
-                const targetFreq = baseFreq.transpose(tuningMode * 12);
-                targetFreqVal = targetFreq.toFrequency();
-                let noteNameDisplay = tuningMode === 1 ? baseFreq.transpose(12).toNote().toUpperCase() : data.note;
-                noteDisplay.innerText = `${noteNameDisplay} (${data.solfege}) / ${Math.round(targetFreqVal)}Hz`;
-            }
-            
-            document.documentElement.style.setProperty('--accent-color', data.strColor);
-            material.color.setHex(data.color); 
+function updateAudioAndUI() {
+    const data = chakraData[currentChakraIndex];
+    kanjiDisplay.innerText = data.kanji;
+    yomiDisplay.innerText = data.yomi;
+    bonjiBg.innerText = data.bonji; 
+    onDisplay.innerText = `${data.on} / [ ${data.phonetic} ]`;
+    meaningDisplay.innerText = data.meaning;
+    
+    let targetFreqVal;
+    if (tuningMode === 2) {
+        targetFreqVal = solfeggioFreqs[currentChakraIndex];
+        noteDisplay.innerText = `ソルフェジオ / ${targetFreqVal}Hz`; 
+    } else {
+        const baseFreq = Tone.Frequency(data.note);
+        const targetFreq = baseFreq.transpose(tuningMode * 12);
+        targetFreqVal = targetFreq.toFrequency();
+        let noteNameDisplay = tuningMode === 1 ? baseFreq.transpose(12).toNote().toUpperCase() : data.note;
+        noteDisplay.innerText = `${noteNameDisplay} (${data.solfege}) / ${Math.round(targetFreqVal)}Hz`;
+    }
+    
+    document.documentElement.style.setProperty('--accent-color', data.strColor);
+    material.color.setHex(data.color); 
 
-            document.querySelectorAll('.chakra-btn').forEach((btn, i) => {
-                btn.className = `chakra-btn ${i === currentChakraIndex ? 'active' : ''}`;
-                btn.style.backgroundColor = i === currentChakraIndex ? data.strColor : 'rgba(255,255,255,0.1)';
-            });
+    document.querySelectorAll('.chakra-btn').forEach((btn, i) => {
+        btn.className = `chakra-btn ${i === currentChakraIndex ? 'active' : ''}`;
+        btn.style.backgroundColor = i === currentChakraIndex ? data.strColor : 'rgba(255,255,255,0.1)';
+    });
 
-            // 停止中も色が変わったことを反映させる
-            if (!isTuning) {
-                bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${data.strColor}`;
-                chakraRing.style.boxShadow = `0 0 30px ${data.strColor}`;
-            }
+    if (!isTuning) {
+        bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${data.strColor}`;
+        chakraRing.style.boxShadow = `0 0 30px ${data.strColor}`;
+    }
 
-            if (isTuning && !isStopping) osc.frequency.rampTo(targetFreqVal, 1.5);
-        }
+    if (isTuning && !isStopping) osc.frequency.rampTo(targetFreqVal, 1.5);
+}
 
-        function selectChakra(index) { currentChakraIndex = index; updateAudioAndUI(); }
+function selectChakra(index) { currentChakraIndex = index; updateAudioAndUI(); }
 
-        btnVis.onclick = () => { visMode = (visMode + 1) % 3; btnVis.innerText = visNames[visMode]; };
-        btnTune.onclick = () => { tuningMode = (tuningMode + 1) % 3; btnTune.innerText = tuneNames[tuningMode]; updateAudioAndUI(); };
+btnVis.onclick = () => { visMode = (visMode + 1) % 3; btnVis.innerText = visNames[visMode]; };
+btnTune.onclick = () => { tuningMode = (tuningMode + 1) % 3; btnTune.innerText = tuneNames[tuningMode]; updateAudioAndUI(); };
 
-        selectChakra(currentChakraIndex);
+selectChakra(currentChakraIndex);
 
-        actionBtn.onclick = async () => {
-            if (!isTuning) {
-                await Tone.start();
-                if (Tone.context.state !== 'running') await Tone.context.resume();
-                if (!oscStarted) { osc.start(); oscStarted = true; }
+actionBtn.onclick = async () => {
+    if (!isTuning) {
+        await Tone.start();
+        if (Tone.context.state !== 'running') await Tone.context.resume();
+        if (!oscStarted) { osc.start(); oscStarted = true; }
 
-                osc.frequency.value = tuningMode === 2 ? solfeggioFreqs[currentChakraIndex] : Tone.Frequency(chakraData[currentChakraIndex].note).transpose(tuningMode * 12).toFrequency();
-                env.triggerAttack();
-                
-                actionBtn.innerText = "TUNING STOP";
-                isTuning = true; isStopping = false;
-            } else if (!isStopping) {
-                isStopping = true; stopStartTime = performance.now();
-                env.triggerRelease();
-                
-                actionBtn.innerText = "TUNING START";
+        osc.frequency.value = tuningMode === 2 ? solfeggioFreqs[currentChakraIndex] : Tone.Frequency(chakraData[currentChakraIndex].note).transpose(tuningMode * 12).toFrequency();
+        env.triggerAttack();
+        
+        actionBtn.innerText = "TUNING STOP";
+        isTuning = true; isStopping = false;
+    } else if (!isStopping) {
+        isStopping = true; stopStartTime = performance.now();
+        env.triggerRelease();
+        
+        actionBtn.innerText = "TUNING START";
 
-                setTimeout(() => {
-                    if (isStopping) {
-                        isTuning = false; isStopping = false;
-                        material.opacity = 0; 
-                        Tone.context.suspend(); 
-
-                        // ★ 停止時のDOMリセット
-                        const colorStr = chakraData[currentChakraIndex].strColor;
-                        bonjiBg.style.transform = `translate(-50%, -50%) scale(1)`;
-                        bonjiBg.style.opacity = "0.2";
-                        bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${colorStr}`;
-
-                        chakraRing.style.transform = `translate(-50%, -50%) scale(1)`;
-                        chakraRing.style.opacity = "0.2";
-                        chakraRing.style.boxShadow = `0 0 30px ${colorStr}`;
-                    }
-                }, 3000); 
-            }
-        };
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (!isTuning && material.opacity <= 0.01) {
-                renderer.render(scene, camera); 
-                return;
-            }
-
-            const now = performance.now() * 0.001;
-            
-            let fadeAlpha = 1.0;
+        setTimeout(() => {
             if (isStopping) {
-                const elapsed = (performance.now() - stopStartTime) / 3000;
-                fadeAlpha = Math.max(0, 1.0 - elapsed);
+                isTuning = false; isStopping = false;
+                material.opacity = 0; 
+                Tone.context.suspend(); // 音響処理を完全にスリープさせて節電
+
+                const colorStr = chakraData[currentChakraIndex].strColor;
+                bonjiBg.style.transform = `translate(-50%, -50%) scale(1)`;
+                bonjiBg.style.opacity = "0.2";
+                bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${colorStr}`;
+
+                chakraRing.style.transform = `translate(-50%, -50%) scale(1)`;
+                chakraRing.style.opacity = "0.2";
+                chakraRing.style.boxShadow = `0 0 30px ${colorStr}`;
             }
+        }, 3000); 
+    }
+};
 
-            // 深呼吸の脈動 (約8秒周期)
-            const pulse = ((Math.sin(now * Math.PI / 4) + 1) / 2) * fadeAlpha; 
-            
-            // --- WebGL 更新 ---
-            material.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
-            material.size = 3 + pulse * 2;
+// --- WebGL 描画ループ ---
+let lastDrawTime = 0;
+// ★ バッテリー最適化：30FPSに制限 (1000ms / 30 = 約33.3ms)
+const fpsInterval = 1000 / 30; 
 
-            // --- ★ HTML（DOM）の呼吸アニメーション復元 ---
-            const colorStr = chakraData[currentChakraIndex].strColor;
-            
-            bonjiBg.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.15})`;
-            bonjiBg.style.opacity = (0.2 + (pulse * 0.3)) * fadeAlpha;
-            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 20}px ${colorStr}`;
+function animate(currentTime) {
+    requestAnimationFrame(animate);
 
-            chakraRing.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.05})`;
-            chakraRing.style.opacity = (0.2 + (pulse * 0.4)) * fadeAlpha;
-            chakraRing.style.boxShadow = `0 0 ${30 + pulse * 20}px ${colorStr}`;
-            // ------------------------------------------------
+    if (!currentTime) currentTime = performance.now();
+    const elapsedSinceLastDraw = currentTime - lastDrawTime;
+    
+    // FPS制限：時間が経っていなければ処理をスキップ
+    if (elapsedSinceLastDraw < fpsInterval) return;
+    lastDrawTime = currentTime - (elapsedSinceLastDraw % fpsInterval);
 
-            const chId = chakraData[currentChakraIndex].id;
-            const positions = particleSystem.geometry.attributes.position.array;
-            const baseScale = 150 + pulse * 20;
+    if (!isTuning && material.opacity <= 0.01) {
+        renderer.render(scene, camera); 
+        return;
+    }
 
-            if (visMode === 0) {
-                const a = chId; const b = chId + 1;
-                for (let i = 0; i < particleCount; i++) {
-                    const t = (i / particleCount) * Math.PI * 2;
-                    positions[i * 3] = Math.sin(a * t + now * 0.5) * baseScale;
-                    positions[i * 3 + 1] = Math.sin(b * t) * baseScale;
-                    positions[i * 3 + 2] = 0; 
-                }
-            } else if (visMode === 1) {
-                const numRings = 40; const pointsPerRing = particleCount / numRings;
-                const R = baseScale * 0.8; const r = baseScale * 0.4;
-                for (let i = 0; i < particleCount; i++) {
-                    const ringIdx = Math.floor(i / pointsPerRing);
-                    const ptIdx = i % pointsPerRing;
-                    const u = (ringIdx / numRings) * Math.PI * 2 + now * 0.2;
-                    const v = (ptIdx / pointsPerRing) * Math.PI * 2 + now * 0.3;
+    const now = performance.now() * 0.001;
+    
+    let fadeAlpha = 1.0;
+    if (isStopping) {
+        const elapsed = (performance.now() - stopStartTime) / 3000;
+        fadeAlpha = Math.max(0, 1.0 - elapsed);
+    }
 
-                    let x = (R + r * Math.cos(v)) * Math.cos(u);
-                    let y = (R + r * Math.cos(v)) * Math.sin(u);
-                    let z = r * Math.sin(v);
-                    
-                    let rotX = Math.PI / 4;
-                    let y2 = y * Math.cos(rotX) - z * Math.sin(rotX);
-                    let z2 = y * Math.sin(rotX) + z * Math.cos(rotX);
-                    
-                    positions[i * 3] = x;
-                    positions[i * 3 + 1] = y2;
-                    positions[i * 3 + 2] = z2;
-                }
-            } else if (visMode === 2) {
-                const a = chId; const b = chId + 2;
-                const R = baseScale * 0.9; const r = baseScale * 0.5;
-                for (let i = 0; i < particleCount; i++) {
-                    const t = (i / particleCount) * Math.PI * 2;
-                    const u = a * t * 4 + now * 0.1;
-                    const v = b * t * 4 + now * 0.2; 
-                    const ripple = Math.sin(chId * 3 * t + now * 0.5) * (baseScale * 0.1);
+    // 深呼吸の脈動 (約8秒周期)
+    const pulse = ((Math.sin(now * Math.PI / 4) + 1) / 2) * fadeAlpha; 
+    
+    // --- WebGL 更新 ---
+    material.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
+    material.size = 3 + pulse * 2;
 
-                    let x = (R + (r + ripple) * Math.cos(v)) * Math.cos(u);
-                    let y = (R + (r + ripple) * Math.sin(v)) * Math.sin(u);
-                    let z = (r + ripple) * Math.sin(v);
+    // --- HTML（DOM）の呼吸アニメーション ---
+    const colorStr = chakraData[currentChakraIndex].strColor;
+    
+    bonjiBg.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.15})`;
+    bonjiBg.style.opacity = (0.2 + (pulse * 0.3)) * fadeAlpha;
+    bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 20}px ${colorStr}`;
 
-                    let rotX = now * 0.2;
-                    let y2 = y * Math.cos(rotX) - z * Math.sin(rotX);
-                    let z2 = y * Math.sin(rotX) + z * Math.cos(rotX);
-                    
-                    let rotY = now * 0.1;
-                    let x2 = x * Math.cos(rotY) + z2 * Math.sin(rotY);
-                    let z3 = -x * Math.sin(rotY) + z2 * Math.cos(rotY);
+    chakraRing.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.05})`;
+    chakraRing.style.opacity = (0.2 + (pulse * 0.4)) * fadeAlpha;
+    chakraRing.style.boxShadow = `0 0 ${30 + pulse * 20}px ${colorStr}`;
 
-                    positions[i * 3] = x2;
-                    positions[i * 3 + 1] = y2;
-                    positions[i * 3 + 2] = z3;
-                }
-            }
+    // --- パーティクル座標計算 ---
+    const chId = chakraData[currentChakraIndex].id;
+    const positions = particleSystem.geometry.attributes.position.array;
+    const baseScale = 150 + pulse * 20;
 
-            particleSystem.geometry.attributes.position.needsUpdate = true;
-            particleSystem.rotation.z = now * 0.05;
-
-            renderer.render(scene, camera);
+    if (visMode === 0) {
+        const a = chId; const b = chId + 1;
+        for (let i = 0; i < particleCount; i++) {
+            const t = (i / particleCount) * Math.PI * 2;
+            positions[i * 3] = Math.sin(a * t + now * 0.5) * baseScale;
+            positions[i * 3 + 1] = Math.sin(b * t) * baseScale;
+            positions[i * 3 + 2] = 0; 
         }
+    } else if (visMode === 1) {
+        const numRings = 40; const pointsPerRing = particleCount / numRings;
+        const R = baseScale * 0.8; const r = baseScale * 0.4;
+        for (let i = 0; i < particleCount; i++) {
+            const ringIdx = Math.floor(i / pointsPerRing);
+            const ptIdx = i % pointsPerRing;
+            const u = (ringIdx / numRings) * Math.PI * 2 + now * 0.2;
+            const v = (ptIdx / pointsPerRing) * Math.PI * 2 + now * 0.3;
 
-        animate();
-    </script>
+            let x = (R + r * Math.cos(v)) * Math.cos(u);
+            let y = (R + r * Math.cos(v)) * Math.sin(u);
+            let z = r * Math.sin(v);
+            
+            let rotX = Math.PI / 4;
+            let y2 = y * Math.cos(rotX) - z * Math.sin(rotX);
+            let z2 = y * Math.sin(rotX) + z * Math.cos(rotX);
+            
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y2;
+            positions[i * 3 + 2] = z2;
+        }
+    } else if (visMode === 2) {
+        const a = chId; const b = chId + 2;
+        const R = baseScale * 0.9; const r = baseScale * 0.5;
+        for (let i = 0; i < particleCount; i++) {
+            const t = (i / particleCount) * Math.PI * 2;
+            const u = a * t * 4 + now * 0.1;
+            const v = b * t * 4 + now * 0.2; 
+            const ripple = Math.sin(chId * 3 * t + now * 0.5) * (baseScale * 0.1);
+
+            let x = (R + (r + ripple) * Math.cos(v)) * Math.cos(u);
+            let y = (R + (r + ripple) * Math.sin(v)) * Math.sin(u);
+            let z = (r + ripple) * Math.sin(v);
+
+            let rotX = now * 0.2;
+            let y2 = y * Math.cos(rotX) - z * Math.sin(rotX);
+            let z2 = y * Math.sin(rotX) + z * Math.cos(rotX);
+            
+            let rotY = now * 0.1;
+            let x2 = x * Math.cos(rotY) + z2 * Math.sin(rotY);
+            let z3 = -x * Math.sin(rotY) + z2 * Math.cos(rotY);
+
+            positions[i * 3] = x2;
+            positions[i * 3 + 1] = y2;
+            positions[i * 3 + 2] = z3;
+        }
+    }
+
+    particleSystem.geometry.attributes.position.needsUpdate = true;
+    particleSystem.rotation.z = now * 0.05;
+
+    renderer.render(scene, camera);
+}
+
+animate();
+
 </body>
 </html>
