@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
     <title>言霊チューナー</title>
     
-    <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon.png?v=1">
-    <link rel="icon" href="icon.png?v=1">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon.png?v=2">
+    <link rel="icon" href="icon.png?v=2">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
     
@@ -33,11 +33,11 @@
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 
         #bonji-bg {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
-            font-family: 'Noto Sans Siddham', sans-serif; font-size: 50vh; 
+            /* ★ 梵字の初期状態のサイズを固定化 (scaleを削除し、font-sizeで調整) */
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; 
             color: rgba(0, 0, 0, 0.8);
-            /* ★ 梵字の視認性アップ：うっすら白いフチ取りを追加 */
-            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); /* 白いフチ取りで視認性キープ */
             text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color);
             opacity: 0.4; z-index: 1; pointer-events: none;
         }
@@ -256,14 +256,12 @@
         selectChakra(currentChakraIndex);
 
         actionBtn.onclick = async () => {
-            if (isStopping) return; // 停止処理中の連打バグ防止
+            if (isStopping) return; 
 
             if (!isTuning) {
-                // ★ レスポンス改善: オーディオの起動を待つ前に、即座にUIを切り替える！
                 isTuning = true;
                 actionBtn.innerText = "TUNING STOP";
                 
-                // その後、裏でオーディオを起動する
                 if (Tone.context.state !== 'running') await Tone.start();
                 if (!oscStarted) { osc.start(); oscStarted = true; }
 
@@ -283,11 +281,13 @@
                         Tone.context.suspend(); 
 
                         const colorStr = chakraData[currentChakraIndex].strColor;
-                        // 停止中は50%サイズで待機
-                        bonjiBg.style.transform = `translate(-50%, -50%) scale(0.5)`;
+                        
+                        // ★ 停止時の梵字（固定サイズで光だけ維持）
+                        bonjiBg.style.transform = `translate(-50%, -50%)`;
                         bonjiBg.style.opacity = "0.4";
                         bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${colorStr}`;
 
+                        // ★ 停止時のリング（50%サイズで待機）
                         chakraRing.style.transform = `translate(-50%, -50%) scale(0.5)`;
                         chakraRing.style.opacity = "0.4";
                         chakraRing.style.boxShadow = `0 0 30px ${colorStr}`;
@@ -336,16 +336,16 @@
 
             const colorStr = chakraData[currentChakraIndex].strColor;
             
-            // ★ 円と梵字を50%〜100%の間でダイナミックに拡大縮小させる (0.5 + 0.5 * pulse)
-            const scaleValue = 0.5 + (pulse * 0.5); 
-
-            bonjiBg.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
+            // ★ 梵字は動かさず（scale削除）、光の幅（textShadow）と透明度だけ変化
+            bonjiBg.style.transform = `translate(-50%, -50%)`;
             bonjiBg.style.opacity = (0.4 + (pulse * 0.4)) * fadeAlpha;
-            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 30}px ${colorStr}`;
+            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 50}px ${colorStr}`;
 
-            chakraRing.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
+            // ★ リングは今まで通り50%〜100%で拡大縮小アニメーション
+            const ringScale = 0.5 + (pulse * 0.5); 
+            chakraRing.style.transform = `translate(-50%, -50%) scale(${ringScale})`;
             chakraRing.style.opacity = (0.4 + (pulse * 0.4)) * fadeAlpha;
-            chakraRing.style.boxShadow = `0 0 ${30 + pulse * 30}px ${colorStr}`;
+            chakraRing.style.boxShadow = `0 0 ${30 + pulse * 40}px ${colorStr}`;
 
             const chId = chakraData[currentChakraIndex].id;
             const positions = particleSystem.geometry.attributes.position.array;
