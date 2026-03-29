@@ -18,7 +18,6 @@
 
     <style>
         :root {
-            /* 完全な純黒でOLEDのバッテリー消費をゼロに */
             --bg-color: #000000; 
             --text-color: #FFFFFF;
             --accent-color: #FF3333; 
@@ -31,17 +30,16 @@
             overflow: hidden; touch-action: none; 
         }
 
-        /* WebGL用のキャンバスコンテナ */
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 
         #bonji-bg {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-family: 'Noto Sans Siddham', sans-serif; font-size: 50vh; 
             color: rgba(0, 0, 0, 1);
-            /* ★ 重い影のアニメーションを軽減し静的なフチ取りに */
             -webkit-text-stroke: 2px rgba(50, 50, 50, 0.5);
+            text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color);
             opacity: 0.2; z-index: 1; pointer-events: none;
-            transition: opacity 1s;
+            /* JSで毎フレーム動かすため transition は削除して軽量化 */
         }
 
         #ui-layer {
@@ -67,10 +65,9 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); 
             border: 4px solid rgba(255, 255, 255, 0.1); border-radius: 50%;
-            /* ★ 重い内側の影を削除、外側の発光のみに */
             box-shadow: 0 0 30px var(--accent-color); 
             z-index: -1; opacity: 0.2; pointer-events: none;
-            transition: box-shadow 0.5s, opacity 1s;
+            /* 同様に transition を削除 */
         }
 
         .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; }
@@ -80,7 +77,6 @@
 
         #control-panel {
             flex: 0 0 auto; 
-            /* ★ 超軽量化：すりガラス(backdrop-filter)を廃止し、ソリッドな半透明ブラックに変更 */
             background-color: rgba(15, 15, 15, 0.85); 
             border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; 
             padding: 3% 5%; text-align: center; margin-bottom: 0; width: 100%; max-width: 400px;
@@ -162,13 +158,12 @@
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.z = 400;
 
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); // GPUレンダリング
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); 
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 重すぎないように制限
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
         container.appendChild(renderer.domElement);
 
-        // パーティクル（粒子）の準備
-        const particleCount = 1000; // 点の数
+        const particleCount = 1000; 
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -177,8 +172,8 @@
             size: 4,
             color: 0xFF3333,
             transparent: true,
-            opacity: 0.0, // 初期は透明
-            blending: THREE.AdditiveBlending, // 加算合成(GPUで超高速)
+            opacity: 0.0, 
+            blending: THREE.AdditiveBlending, 
             depthWrite: false
         });
         const particleSystem = new THREE.Points(geometry, material);
@@ -233,12 +228,18 @@
             }
             
             document.documentElement.style.setProperty('--accent-color', data.strColor);
-            material.color.setHex(data.color); // WebGLの粒の色を更新
+            material.color.setHex(data.color); 
 
             document.querySelectorAll('.chakra-btn').forEach((btn, i) => {
                 btn.className = `chakra-btn ${i === currentChakraIndex ? 'active' : ''}`;
                 btn.style.backgroundColor = i === currentChakraIndex ? data.strColor : 'rgba(255,255,255,0.1)';
             });
+
+            // 停止中も色が変わったことを反映させる
+            if (!isTuning) {
+                bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${data.strColor}`;
+                chakraRing.style.boxShadow = `0 0 30px ${data.strColor}`;
+            }
 
             if (isTuning && !isStopping) osc.frequency.rampTo(targetFreqVal, 1.5);
         }
@@ -252,7 +253,6 @@
 
         actionBtn.onclick = async () => {
             if (!isTuning) {
-                // ★ オーディオエンジンの起床 (Resume)
                 await Tone.start();
                 if (Tone.context.state !== 'running') await Tone.context.resume();
                 if (!oscStarted) { osc.start(); oscStarted = true; }
@@ -261,35 +261,38 @@
                 env.triggerAttack();
                 
                 actionBtn.innerText = "TUNING STOP";
-                bonjiBg.style.opacity = "0.5"; 
-                chakraRing.style.opacity = "0.6"; 
-                
                 isTuning = true; isStopping = false;
             } else if (!isStopping) {
                 isStopping = true; stopStartTime = performance.now();
                 env.triggerRelease();
                 
                 actionBtn.innerText = "TUNING START";
-                bonjiBg.style.opacity = "0.2";
-                chakraRing.style.opacity = "0.2";
 
                 setTimeout(() => {
                     if (isStopping) {
                         isTuning = false; isStopping = false;
-                        material.opacity = 0; // パーティクルを完全に消す
-                        // ★ 完全スリープ：オーディオエンジンを冬眠させてバッテリー消費をカット
+                        material.opacity = 0; 
                         Tone.context.suspend(); 
+
+                        // ★ 停止時のDOMリセット
+                        const colorStr = chakraData[currentChakraIndex].strColor;
+                        bonjiBg.style.transform = `translate(-50%, -50%) scale(1)`;
+                        bonjiBg.style.opacity = "0.2";
+                        bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${colorStr}`;
+
+                        chakraRing.style.transform = `translate(-50%, -50%) scale(1)`;
+                        chakraRing.style.opacity = "0.2";
+                        chakraRing.style.boxShadow = `0 0 30px ${colorStr}`;
                     }
                 }, 3000); 
             }
         };
 
-        // --- WebGL 描画ループ (GPUに任せるので制限なしでOK) ---
         function animate() {
             requestAnimationFrame(animate);
 
             if (!isTuning && material.opacity <= 0.01) {
-                renderer.render(scene, camera); // 停止中は静止画を描画
+                renderer.render(scene, camera); 
                 return;
             }
 
@@ -304,18 +307,27 @@
             // 深呼吸の脈動 (約8秒周期)
             const pulse = ((Math.sin(now * Math.PI / 4) + 1) / 2) * fadeAlpha; 
             
-            // WebGLマテリアルの透明度をフェードに合わせる
+            // --- WebGL 更新 ---
             material.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
             material.size = 3 + pulse * 2;
 
+            // --- ★ HTML（DOM）の呼吸アニメーション復元 ---
+            const colorStr = chakraData[currentChakraIndex].strColor;
+            
+            bonjiBg.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.15})`;
+            bonjiBg.style.opacity = (0.2 + (pulse * 0.3)) * fadeAlpha;
+            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 20}px ${colorStr}`;
+
+            chakraRing.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.05})`;
+            chakraRing.style.opacity = (0.2 + (pulse * 0.4)) * fadeAlpha;
+            chakraRing.style.boxShadow = `0 0 ${30 + pulse * 20}px ${colorStr}`;
+            // ------------------------------------------------
+
             const chId = chakraData[currentChakraIndex].id;
             const positions = particleSystem.geometry.attributes.position.array;
-
-            // 頂点座標の計算 (GPUへ送るデータ作り)
             const baseScale = 150 + pulse * 20;
 
             if (visMode === 0) {
-                // 2Dサイマ (点による軌跡)
                 const a = chId; const b = chId + 1;
                 for (let i = 0; i < particleCount; i++) {
                     const t = (i / particleCount) * Math.PI * 2;
@@ -324,7 +336,6 @@
                     positions[i * 3 + 2] = 0; 
                 }
             } else if (visMode === 1) {
-                // 3Dトーラス
                 const numRings = 40; const pointsPerRing = particleCount / numRings;
                 const R = baseScale * 0.8; const r = baseScale * 0.4;
                 for (let i = 0; i < particleCount; i++) {
@@ -337,7 +348,6 @@
                     let y = (R + r * Math.cos(v)) * Math.sin(u);
                     let z = r * Math.sin(v);
                     
-                    // 回転
                     let rotX = Math.PI / 4;
                     let y2 = y * Math.cos(rotX) - z * Math.sin(rotX);
                     let z2 = y * Math.sin(rotX) + z * Math.cos(rotX);
@@ -347,7 +357,6 @@
                     positions[i * 3 + 2] = z2;
                 }
             } else if (visMode === 2) {
-                // 統合3D
                 const a = chId; const b = chId + 2;
                 const R = baseScale * 0.9; const r = baseScale * 0.5;
                 for (let i = 0; i < particleCount; i++) {
@@ -374,15 +383,12 @@
                 }
             }
 
-            // 更新した座標をGPUに送信
             particleSystem.geometry.attributes.position.needsUpdate = true;
-            // オブジェクト全体をゆっくり回転
             particleSystem.rotation.z = now * 0.05;
 
             renderer.render(scene, camera);
         }
 
-        // ループ開始
         animate();
     </script>
 </body>
