@@ -33,13 +33,13 @@
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 
         #bonji-bg {
-            /* ★ 梵字の初期状態のサイズを固定化 (scaleを削除し、font-sizeで調整) */
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; 
             color: rgba(0, 0, 0, 0.8);
-            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); /* 白いフチ取りで視認性キープ */
-            text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color);
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); 
+            text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 40px var(--accent-color); /* 影のサイズは固定 */
             opacity: 0.4; z-index: 1; pointer-events: none;
+            will-change: opacity; /* 最適化のヒント */
         }
 
         #ui-layer {
@@ -65,8 +65,9 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
             width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); 
             border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%;
-            box-shadow: 0 0 30px var(--accent-color); 
+            box-shadow: 0 0 50px var(--accent-color); /* 影のサイズは固定 */
             z-index: -1; opacity: 0.4; pointer-events: none;
+            will-change: transform, opacity; /* 最適化のヒント */
         }
 
         .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; }
@@ -239,10 +240,9 @@
                 btn.style.backgroundColor = i === currentChakraIndex ? data.strColor : 'rgba(255,255,255,0.1)';
             });
 
-            if (!isTuning) {
-                bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${data.strColor}`;
-                chakraRing.style.boxShadow = `0 0 30px ${data.strColor}`;
-            }
+            // チャクラ切り替え時に影の色を更新（毎フレームの更新は廃止）
+            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 40px ${data.strColor}`;
+            chakraRing.style.boxShadow = `0 0 50px ${data.strColor}`;
 
             if (isTuning && !isStopping) osc.frequency.rampTo(targetFreqVal, 1.5);
         }
@@ -280,17 +280,10 @@
                         material.opacity = 0; 
                         Tone.context.suspend(); 
 
-                        const colorStr = chakraData[currentChakraIndex].strColor;
-                        
-                        // ★ 停止時の梵字（固定サイズで光だけ維持）
-                        bonjiBg.style.transform = `translate(-50%, -50%)`;
+                        // 停止時の固定状態（影のサイズは固定、不透明度のみ調整）
                         bonjiBg.style.opacity = "0.4";
-                        bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${colorStr}`;
-
-                        // ★ 停止時のリング（50%サイズで待機）
                         chakraRing.style.transform = `translate(-50%, -50%) scale(0.5)`;
                         chakraRing.style.opacity = "0.4";
-                        chakraRing.style.boxShadow = `0 0 30px ${colorStr}`;
                     }
                 }, 3000); 
             }
@@ -304,16 +297,14 @@
         function animate(currentTime) {
             requestAnimationFrame(animate);
 
+            // ★ 完全に待機中の場合は、計算もレンダリングもDOM操作も全てスキップして負荷をゼロにする
+            if (!isTuning && !isStopping) return;
+
             if (!currentTime) currentTime = performance.now();
             const elapsedSinceLastDraw = currentTime - lastDrawTime;
             
             if (elapsedSinceLastDraw < fpsInterval) return;
             lastDrawTime = currentTime - (elapsedSinceLastDraw % fpsInterval);
-
-            if (!isTuning && material.opacity <= 0.01) {
-                renderer.render(scene, camera); 
-                return;
-            }
 
             const now = performance.now() * 0.001;
             const dt = elapsedSinceLastDraw / 1000; 
@@ -334,18 +325,13 @@
             material.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
             material.size = 3 + pulse * 2;
 
-            const colorStr = chakraData[currentChakraIndex].strColor;
-            
-            // ★ 梵字は動かさず（scale削除）、光の幅（textShadow）と透明度だけ変化
-            bonjiBg.style.transform = `translate(-50%, -50%)`;
+            // ★ 毎フレームの重い text-shadow / box-shadow の更新を廃止
+            // 代わりに opacity と scale だけでアニメーションさせる
             bonjiBg.style.opacity = (0.4 + (pulse * 0.4)) * fadeAlpha;
-            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 50}px ${colorStr}`;
 
-            // ★ リングは今まで通り50%〜100%で拡大縮小アニメーション
             const ringScale = 0.5 + (pulse * 0.5); 
             chakraRing.style.transform = `translate(-50%, -50%) scale(${ringScale})`;
             chakraRing.style.opacity = (0.4 + (pulse * 0.4)) * fadeAlpha;
-            chakraRing.style.boxShadow = `0 0 ${30 + pulse * 40}px ${colorStr}`;
 
             const chId = chakraData[currentChakraIndex].id;
             const positions = particleSystem.geometry.attributes.position.array;
