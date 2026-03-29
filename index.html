@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -7,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（最適化版）</title>
+    <title>言霊チューナー</title>
 
 <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
 <link rel="icon" href="icon2.png?v=2">
@@ -17,35 +16,64 @@
 <link rel="manifest" href="manifest.json">
 
 <style>
-    :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
+    :root { 
+        --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; 
+        /* アニメーション用変数 */
+        --bonji-op: 0.4; --ring-op: 0.4; --ring-scale: 0.5;
+    }
     html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
     #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-    /* ▼ CSS変数ではなくopacity/transformを直接JSで制御するためwill-changeを適切に設定 */
-    #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; }
-    #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; }
-    #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 5vh) + 3vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+    
+    #bonji-bg { 
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+        font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); 
+        -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); 
+        text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); 
+        opacity: var(--bonji-op); z-index: 1; pointer-events: none; 
+    }
+    
+    #chakra-ring { 
+        position: absolute; top: 50%; left: 50%; 
+        transform: translate(-50%, -50%) scale(var(--ring-scale)); 
+        width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); 
+        border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; 
+        box-shadow: 0 0 30px var(--accent-color); z-index: -1; 
+        opacity: var(--ring-op); pointer-events: none; 
+    }
+
+    #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding: calc(env(safe-area-inset-top, 5vh) + 2vh) 5% calc(env(safe-area-inset-bottom, 5vh) + 3vh); box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
     #ui-layer > * { pointer-events: auto; }
-    header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
-    .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
-    .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
-    #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 40vh; }
-    #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; }
+    
+    .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; text-align: center; }
+    .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; text-align: center; }
+    
+    #central-node { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; }
     .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; }
     .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); margin-bottom: 1vh; transition: color 0.5s; }
     .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; }
     .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; margin-top: 1vh; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; }
-    #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; margin-bottom: 0; width: 100%; max-width: 400px; }
-    #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 2vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
-    #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 2vh; }
-    .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
-    .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
-    #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 2vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 2vh; touch-action: manipulation; }
-    #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
-    #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-    .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
-    .toggle-btn:active { background: rgba(255,255,255,0.3); }
-</style>
+    
+    #control-panel { background-color: rgba(15, 15, 15, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 20px; text-align: center; width: 100%; max-width: 400px; }
+    #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 2vh; letter-spacing: 1px; color: #CCC; }
+    #chakra-selector { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 2vh; }
+    
+    .chakra-btn { 
+        flex: 1; aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); 
+        background: rgba(0,0,0,0.5); cursor: pointer; color: #FFF; font-weight: 700; 
+        transition: all 0.2s; padding: 0;
+    }
+    .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 15px var(--accent-color); transform: scale(1.1); }
+    
+    #action-btn { 
+        background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); 
+        padding: 15px; border-radius: 35px; font-size: 18px; font-weight: 700; letter-spacing: 3px; 
+        cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 15px;
+    }
+    #action-btn:active { background: var(--accent-color); color: #000; }
 
+    #debug-panel { display: flex; justify-content: space-between; gap: 8px; }
+    .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-size: 10px; padding: 10px 0; border-radius: 8px; }
+</style>
 </head>
 <body>
     <div id="webgl-container"></div>
@@ -75,7 +103,6 @@
     </div>
 
 <script>
-    // --- 1. データ ---
     const chakraData = [
         { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命 / 会陰" },
         { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪", meaning: "水 / 創造 / 感情 / 丹田" },
@@ -90,23 +117,19 @@
     const tuneNames = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
     const breathNames = ['呼吸: 8秒', '呼吸: 16秒'];
 
-    // --- 2. 変数 ---
     let currentChakraIndex = 0, isTuning = false, isStopping = false;
-    let stopStartTime = 0, visMode = 2, tuningMode = 0, breathMode = 0;
+    let visMode = 2, tuningMode = 0, breathMode = 0;
     let rafId = null, renderer, scene, camera, particleSystem, material;
-    let breathPhase = -Math.PI / 2, lastFrameTime = 0, wakeLock = null;
+    let breathPhase = -Math.PI / 2, lastFrameTime = 0, stopStartTime = 0;
+    let wakeLock = null;
 
-    const CONFIG = /iPhone|iPad/.test(navigator.userAgent) 
-        ? { fps: 30, particles: 200, dpr: 1.0 } 
-        : { fps: 60, particles: 600, dpr: window.devicePixelRatio };
+    const isMobile = /iPhone|iPad/i.test(navigator.userAgent);
+    const CONFIG = isMobile ? { fps: 30, particles: 200, dpr: 1.0 } : { fps: 60, particles: 600, dpr: window.devicePixelRatio };
     const TARGET_INTERVAL = 1000 / CONFIG.fps;
 
     const bonjiBg = document.getElementById('bonji-bg'), chakraRing = document.getElementById('chakra-ring');
-    const kanjiDisplay = document.getElementById('kanji-display'), yomiDisplay = document.getElementById('yomi-display');
-    const onDisplay = document.getElementById('on-display'), noteDisplay = document.getElementById('note-display');
-    const actionBtn = document.getElementById('action-btn'), chakraSelector = document.getElementById('chakra-selector');
+    const actionBtn = document.getElementById('action-btn');
 
-    // --- 3. 音響 ---
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
     const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass" }).connect(delay);
@@ -114,7 +137,7 @@
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
     osc.start();
 
-    // --- 4. スリープ防止 (Wake Lock) ---
+    // スリープ防止
     async function requestWakeLock() {
         if ('wakeLock' in navigator) {
             try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
@@ -124,13 +147,13 @@
         if (wakeLock) { wakeLock.release(); wakeLock = null; }
     }
 
-    // --- 5. 描画初期化 ---
     function initThree() {
         if (renderer) return;
+        const container = document.getElementById('webgl-container');
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(CONFIG.dpr);
-        document.getElementById('webgl-container').appendChild(renderer.domElement);
+        container.appendChild(renderer.domElement);
 
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -143,7 +166,7 @@
         geo.setAttribute('aIndex', new THREE.BufferAttribute(idx, 1));
 
         material = new THREE.ShaderMaterial({
-            uniforms: { uTime:{value:0}, uPulse:{value:0}, uColor:{value:new THREE.Color()}, uChakraId:{value:1}, uVisMode:{value:2}, uOpacity:{value:0} },
+            uniforms: { uTime:{value:0}, uPulse:{value:0}, uColor:{value:new THREE.Color(chakraData[0].color)}, uChakraId:{value:1}, uVisMode:{value:2}, uOpacity:{value:0} },
             vertexShader: `
                 uniform float uTime, uPulse, uChakraId, uVisMode; attribute float aIndex;
                 void main() {
@@ -173,16 +196,16 @@
         scene.add(particleSystem);
     }
 
-    // --- 6. ループ ---
     function drawFrame(ts) {
         if (!renderer) return;
-        const now = ts * 0.001, dt = (ts - lastFrameTime) * 0.001;
+        const now = ts * 0.001;
+        const dt = (ts - lastFrameTime) * 0.001;
         const fade = isStopping ? Math.max(0, 1.0 - (ts - stopStartTime) / 2500) : 1.0;
         const period = breathMode === 0 ? 8 : 16;
         breathPhase += (6.283 / period) * (dt > 0.1 ? 0.033 : dt);
         const pulse = (Math.sin(breathPhase) + 1) * 0.5;
 
-        // JSでの比較計算を廃止。ブラウザの最適化（CSS変数）に任せる
+        // CSS変数でアニメーション。JSでの余計な計算を省く（低燃費）
         const root = document.documentElement;
         root.style.setProperty('--bonji-op', (0.3 + pulse * 0.5) * fade);
         root.style.setProperty('--ring-op', (0.2 + pulse * 0.4) * fade);
@@ -204,59 +227,62 @@
         rafId = requestAnimationFrame(loop);
     }
 
-    // --- 7. UI/制御 ---
     function updateUI() {
         const d = chakraData[currentChakraIndex];
-        kanjiDisplay.innerText = d.kanji; yomiDisplay.innerText = d.yomi;
-        bonjiBg.innerText = d.bonji; onDisplay.innerText = `${d.on} / [ ${d.phonetic} ]`;
+        document.getElementById('kanji-display').innerText = d.kanji;
+        document.getElementById('yomi-display').innerText = d.yomi;
+        document.getElementById('on-display').innerText = `${d.on} / [ ${d.phonetic} ]`;
         document.getElementById('meaning').innerText = d.meaning;
+        bonjiBg.innerText = d.bonji;
         
-        let f = tuningMode === 2 ? solfeggioFreqs[currentChakraIndex] : Tone.Frequency(d.note).transpose(tuningMode*12).toFrequency();
-        noteDisplay.innerText = `${tuningMode===2?'SOL':d.note} / ${Math.round(f)}Hz`;
+        let freq = tuningMode === 2 ? solfeggioFreqs[currentChakraIndex] : Tone.Frequency(d.note).transpose(tuningMode * 12).toFrequency();
+        document.getElementById('note-display').innerText = `${tuningMode===2?'SOL':d.note} (${d.solfege}) / ${Math.round(freq)}Hz`;
         
         document.documentElement.style.setProperty('--accent-color', d.strColor);
         if (material) {
             material.uniforms.uColor.value.setHex(d.color);
             material.uniforms.uChakraId.value = d.id;
         }
-        document.querySelectorAll('.chakra-btn').forEach((b, i) => b.className = `chakra-btn ${i===currentChakraIndex?'active':''}`);
-        if (isTuning && !isStopping) osc.frequency.rampTo(f, 1.5);
+        
+        document.querySelectorAll('.chakra-btn').forEach((btn, i) => {
+            btn.className = `chakra-btn ${i === currentChakraIndex ? 'active' : ''}`;
+            btn.style.backgroundColor = i === currentChakraIndex ? d.strColor : 'rgba(0,0,0,0.5)';
+        });
+
+        if (isTuning && !isStopping) osc.frequency.rampTo(freq, 1.5);
     }
 
     async function toggleTuning() {
         if (isStopping) return;
         if (!isTuning) {
-            isTuning = true; actionBtn.innerText = "STOP";
+            isTuning = true; actionBtn.innerText = "TUNING STOP";
             await Tone.start(); initThree(); updateUI(); env.triggerAttack();
             requestWakeLock(); startLoop();
         } else {
-            isStopping = true; actionBtn.innerText = "RESET..."; stopStartTime = performance.now();
+            isStopping = true; actionBtn.disabled = true; actionBtn.innerText = "RESETTING..."; 
+            stopStartTime = performance.now();
             env.triggerRelease(); releaseWakeLock();
             setTimeout(() => {
-                cancelAnimationFrame(rafId); renderer.dispose(); renderer = null;
-                document.getElementById('webgl-container').innerHTML = "";
-                isTuning = isStopping = false; actionBtn.innerText = "START";
+                cancelAnimationFrame(rafId);
+                if(renderer) { renderer.dispose(); document.getElementById('webgl-container').innerHTML = ""; renderer = null; }
+                isTuning = isStopping = false; actionBtn.disabled = false; actionBtn.innerText = "TUNING START";
             }, 3500);
         }
     }
 
-    // --- 8. イベント ---
     chakraData.forEach((c, i) => {
         const b = document.createElement('button'); b.className = 'chakra-btn'; b.innerText = c.id;
         b.onclick = () => { currentChakraIndex = i; updateUI(); };
-        chakraSelector.appendChild(b);
+        document.getElementById('chakra-selector').appendChild(b);
     });
+
     actionBtn.onclick = toggleTuning;
     document.getElementById('btn-vis').onclick = () => { visMode=(visMode+1)%3; material.uniforms.uVisMode.value=visMode; document.getElementById('btn-vis').innerText=visNames[visMode]; };
     document.getElementById('btn-tune').onclick = () => { tuningMode=(tuningMode+1)%3; updateUI(); document.getElementById('btn-tune').innerText=tuneNames[tuningMode]; };
     document.getElementById('btn-breath').onclick = () => { breathMode=(breathMode+1)%2; document.getElementById('btn-breath').innerText=breathNames[breathMode]; };
-    
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden) { releaseWakeLock(); } else if (isTuning && !isStopping) { requestWakeLock(); }
-    });
+
+    window.addEventListener('resize', () => { if(camera && renderer) { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }});
     updateUI();
 </script>
-
-
 </body>
 </html>
