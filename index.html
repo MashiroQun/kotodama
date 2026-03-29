@@ -15,7 +15,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <style>
         :root {
-            --bg-color: #030303;
+            /* ★ OELDディスプレイ最適化：完全な黒(純黒)を採用 */
+            --bg-color: #000000; 
             --text-color: #FFFFFF;
             --accent-color: #FF3333; 
             --glass-bg: rgba(255, 255, 255, 0.05);
@@ -35,10 +36,10 @@
 
         #bonji-bg {
             position: absolute; 
-            top: 50%; /* 55%から50%に戻して中央に配置 */
+            top: 50%; 
             left: 50%; transform: translate(-50%, -50%);
             font-family: 'Noto Sans Siddham', sans-serif; 
-            font-size: 50vh; /* 少し小さくして圧迫感を減らす */
+            font-size: 50vh; 
             color: rgba(0, 0, 0, 1);
             -webkit-text-stroke: 3px rgba(10, 10, 10, 0.5);
             text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color);
@@ -50,7 +51,6 @@
             position: relative; z-index: 3; 
             display: flex; flex-direction: column; justify-content: space-between; align-items: center;
             height: 100%; 
-            /* パーセンテージとenvを組み合わせて柔軟な余白に */
             padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh);
             padding-bottom: calc(env(safe-area-inset-bottom, 5vh) + 3vh);
             padding-left: 5%;
@@ -68,14 +68,14 @@
         #central-node { 
             flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; 
             width: 100%; position: relative; 
-            min-height: 40vh; /* 最小高さを確保 */
+            min-height: 40vh; 
         }
 
         #chakra-ring {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: clamp(240px, 75vw, 320px); /* 画面幅に応じてサイズ変更 */
+            width: clamp(240px, 75vw, 320px); 
             height: clamp(240px, 75vw, 320px); 
             border: 6px solid rgba(255, 255, 255, 0.2); 
             border-radius: 50%;
@@ -93,7 +93,7 @@
         
         .kanji {
             font-family: 'Noto Sans JP', sans-serif; font-weight: 900; 
-            font-size: clamp(100px, 30vw, 140px); /* フォントサイズも動的に */
+            font-size: clamp(100px, 30vw, 140px); 
             color: var(--accent-color);
             text-shadow: 0px 5px 15px rgba(0,0,0,1), 0px 0px 10px rgba(0,0,0,0.8), 0px 0px 30px rgba(0,0,0,0.6);
             margin-bottom: 1vh; transition: color 0.5s;
@@ -106,9 +106,9 @@
         #control-panel {
             flex: 0 0 auto; background-color: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; 
-            padding: 3% 5%; /* パディングもパーセンテージに */
+            padding: 3% 5%; 
             text-align: center; 
-            margin-bottom: 0; /* マージンを削除し、ui-layerのpaddingに依存させる */
+            margin-bottom: 0; 
             width: 100%; max-width: 400px;
         }
 
@@ -305,6 +305,9 @@
                 
                 isTuning = true;
                 isStopping = false;
+                
+                // ★ 描画ループ開始
+                lastDrawTime = performance.now();
                 draw();
             } else if (!isStopping) {
                 isStopping = true;
@@ -323,7 +326,7 @@
                         chakraRing.style.opacity = "0.3";
                         
                         ctx.globalCompositeOperation = "source-over";
-                        ctx.fillStyle = "#030303";
+                        ctx.fillStyle = "#000000"; // ★ 純黒でリセット
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                     }
                 }, 3000); 
@@ -337,10 +340,22 @@
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
-        function draw() {
+        // ★ FPS制限用の変数
+        let lastDrawTime = 0;
+        const fpsInterval = 1000 / 30; // 30fpsに制限（1フレーム約33.3ms）
+
+        function draw(currentTime) {
             if (!isTuning) return;
             requestAnimationFrame(draw);
 
+            // ★ FPS制御：前回の描画から十分な時間が経過していなければスキップ
+            const elapsedSinceLastDraw = currentTime - lastDrawTime;
+            if (elapsedSinceLastDraw < fpsInterval) {
+                return;
+            }
+            lastDrawTime = currentTime - (elapsedSinceLastDraw % fpsInterval);
+
+            // アニメーション用の時間は、常に経過時間（パフォーマンスカウンター）を使う
             const now = performance.now();
             const time = now * 0.001;
             
@@ -350,7 +365,9 @@
                 fadeAlpha = Math.max(0, 1.0 - elapsed);
             }
 
-            const pulse = ((Math.sin(time * Math.PI / 2) + 1) / 2) * fadeAlpha; 
+            // ★ 呼吸スピードの最適化：周期を遅くして「深呼吸」に
+            // time * Math.PI / 4 とすることで、約8秒で1サイクル（吸う・吐く）になります
+            const pulse = ((Math.sin(time * Math.PI / 4) + 1) / 2) * fadeAlpha; 
             const color = chakraData[currentChakraIndex].color;
 
             const scaleAmount = 1 + (pulse * 0.15); 
@@ -363,7 +380,8 @@
             chakraRing.style.opacity = (0.3 + (pulse * 0.5)) * fadeAlpha;
 
             ctx.globalCompositeOperation = "source-over";
-            ctx.fillStyle = `rgba(3, 3, 3, ${isStopping ? 0.15 : 0.35})`; 
+            // ★ 残像エフェクトの背景色を純黒ベースに変更し、OLEDに最適化
+            ctx.fillStyle = `rgba(0, 0, 0, ${isStopping ? 0.15 : 0.35})`; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.globalCompositeOperation = "lighter";
 
@@ -382,7 +400,8 @@
                 
                 for (let i = 0; i <= steps; i++) {
                     const t = (i / steps) * Math.PI * 2;
-                    const px = cx + Math.sin(a * t + time) * scale;
+                    // ★ 2Dサイマティクスの動きも少しゆったりさせる
+                    const px = cx + Math.sin(a * t + time * 0.5) * scale;
                     const py = cy + Math.sin(b * t) * scale;
                     if (i === 0) ctx.moveTo(px, py);
                     else ctx.lineTo(px, py);
@@ -396,12 +415,12 @@
                 const rBase = (Math.min(canvas.width, canvas.height) * 0.15) + (pulse * 30); 
 
                 for (let i = 0; i < numRings; i++) {
-                    const angle = (i / numRings) * Math.PI * 2 + time * 0.3;
+                    const angle = (i / numRings) * Math.PI * 2 + time * 0.15;
                     const ringCx = Math.cos(angle) * torusRadius;
                     const ringCy = Math.sin(angle) * torusRadius;
                     
                     for (let j = 0; j < pointsPerRing; j++) {
-                        const phi = (j / pointsPerRing) * Math.PI * 2 + time * 0.5;
+                        const phi = (j / pointsPerRing) * Math.PI * 2 + time * 0.25;
                         let x3d = ringCx + Math.cos(phi) * rBase * Math.cos(angle);
                         let y3d = ringCy + Math.cos(phi) * rBase * Math.sin(angle);
                         let z3d = Math.sin(phi) * rBase;
@@ -434,21 +453,21 @@
 
                 for (let i = 0; i <= steps; i++) {
                     const t = (i / steps) * Math.PI * 2;
-                    const u = a * t * 4 + time * 0.4;
-                    const v = b * t * 4 + time * 0.6; 
+                    const u = a * t * 4 + time * 0.2;
+                    const v = b * t * 4 + time * 0.3; 
 
-                    const ripple = Math.sin(chId * 3 * t + time) * (baseScale * 0.15);
+                    const ripple = Math.sin(chId * 3 * t + time * 0.5) * (baseScale * 0.15);
 
                     let x3d = (R + (r + ripple) * Math.cos(v)) * Math.cos(u);
                     let y3d = (R + (r + ripple) * Math.sin(v)) * Math.sin(u);
                     let z3d = (r + ripple) * Math.sin(v);
 
-                    const rotX = time * 0.2;
+                    const rotX = time * 0.1;
                     let y2 = y3d * Math.cos(rotX) - z3d * Math.sin(rotX);
                     let z2 = y3d * Math.sin(rotX) + z3d * Math.cos(rotX);
                     y3d = y2; z3d = z2;
 
-                    const rotY = time * 0.25;
+                    const rotY = time * 0.15;
                     let x2 = x3d * Math.cos(rotY) + z3d * Math.sin(rotY);
                     let z3 = -x3d * Math.sin(rotY) + z3d * Math.cos(rotY);
                     x3d = x2; z3d = z3;
