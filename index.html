@@ -23,11 +23,14 @@
             --glass-blur: blur(15px);
         }
 
+        /* スクロールとバウンスを完全に防止する設定 */
         html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
+            margin: 0; padding: 0; width: 100%; 
+            height: 100dvh; /* 100%から100dvh（動的ビューポート）に変更 */
             background-color: var(--bg-color); color: var(--text-color);
             font-family: 'Inter', sans-serif; font-weight: 100;
             overflow: hidden; 
+            touch-action: none; /* デフォルトのスクロールやズームをブラウザレベルで禁止 */
         }
 
         #visualizer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
@@ -47,13 +50,19 @@
         #ui-layer {
             position: relative; z-index: 3; 
             display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-            height: 100%; padding: 20px; box-sizing: border-box;
+            height: 100%; 
+            /* ★ iPhoneのダイナミックアイランド(上)とホームインジケーター(下)を避けるセーフエリア設定 */
+            padding-top: calc(env(safe-area-inset-top, 20px) + 10px);
+            padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 10px);
+            padding-left: 20px;
+            padding-right: 20px;
+            box-sizing: border-box;
             background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent 40%, rgba(0,0,0,0.8));
             pointer-events: none;
         }
         #ui-layer > * { pointer-events: auto; }
 
-        header { flex: 0 0 auto; text-align: center; margin-top: 10px; }
+        header { flex: 0 0 auto; text-align: center; margin-top: 5px; }
         .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 5px; color: #FFF; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
         .title-sub { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 5px; transition: color 0.5s; }
 
@@ -157,6 +166,13 @@
     </div>
 
     <script>
+        // ★ スクロール防止用のスクリプトを追加 ★
+        // これにより、画面を上下にスワイプしてもPWA特有の余白が出なくなります。
+        document.addEventListener('touchmove', function(event) {
+            event.preventDefault();
+        }, { passive: false });
+
+
         const chakraData = [
             { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命 / 会陰" },
             { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: "#FF8C00", bonji: "𑖪", meaning: "水 / 創造 / 感情 / 丹田" },
@@ -449,4 +465,3 @@
     </script>
 </body>
 </html>
-    
