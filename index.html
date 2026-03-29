@@ -107,13 +107,26 @@
     let renderer, scene, camera, particleSystem, material;
     let lastPulse = -1; // DOM更新の節約用
 
+　// ルックアップテーブル（起動時に1回だけ計算）
+const LUT_SIZE = 2048;
+const SIN_LUT = new Float32Array(LUT_SIZE);
+const COS_LUT = new Float32Array(LUT_SIZE);
+for (let i = 0; i < LUT_SIZE; i++) {
+    const a = (i / LUT_SIZE) * Math.PI * 2;
+    SIN_LUT[i] = Math.sin(a);
+    COS_LUT[i] = Math.cos(a);
+}
+function lutSin(x) { return SIN_LUT[((x % (Math.PI*2)) / (Math.PI*2) * LUT_SIZE | 0) & (LUT_SIZE-1)]; }
+function lutCos(x) { return COS_LUT[((x % (Math.PI*2)) / (Math.PI*2) * LUT_SIZE | 0) & (LUT_SIZE-1)]; }
+
+
     // デバイス判定
     const isIPhone = /iPhone/.test(navigator.userAgent);
     const isIPad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
     const CONFIG = isIPhone
-        ? { fps: 24, particles: 350, pixelRatio: 0.5 }
+        ? { fps: 24, particles: 300, pixelRatio: 0.3 }
         : isIPad
-        ? { fps: 30, particles: 600, pixelRatio: 0.7 }
+        ? { fps: 30, particles: 500, pixelRatio: 0.6 }
         : { fps: 45, particles: 1000, pixelRatio: 1.0 };
 
     // DOM要素
@@ -134,7 +147,7 @@
     // ★ノイズ修正1: roomSizeを下げて残響の干渉を防ぐ
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
     // ★ノイズ修正2: Chorusのdelayを短くしてバッファ競合を防ぐ
-    const chorus = new Tone.Chorus({ frequency: 0.2, delayTime: 1.5, depth: 0.6 }).connect(reverb).start();
+    const chorus = new Tone.Chorus({ frequency: 0.2, delayTime: 1.5, depth: 0.6 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(chorus);
     // ★ノイズ修正3: releaseを短くして解放中の音声グラフのノイズを減らす
     const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
@@ -209,6 +222,7 @@
             
             initThree();
             if (!oscStarted) { osc.start(); oscStarted = true; }
+            chorus.start();
             updateAudioAndUI();
             env.triggerAttack();
             startLoop();
@@ -232,7 +246,7 @@
                     isStopping = false;
                     actionBtn.disabled = false;
                     actionBtn.innerText = "TUNING START";
-                    
+                    chorus.stop();
                     // 背景などのビジュアルを初期状態へ
                     bonjiBg.style.opacity = "0.4";
                     chakraRing.style.transform = `translate(-50%, -50%) scale(0.5)`;
@@ -287,25 +301,26 @@
         for (let i = 0; i < CONFIG.particles; i++) {
             const t = (i / CONFIG.particles) * Math.PI * 2;
             if (visMode === 0) {
-                positions[i * 3] = Math.sin(chId * t + now * 0.5) * baseScale;
-                positions[i * 3 + 1] = Math.sin((chId + 1) * t) * baseScale;
-                positions[i * 3 + 2] = 0;
-            } else if (visMode === 1) {
-                const u = (Math.floor(i/20)/20)*Math.PI*2 + now*0.2;
-                const v = (i%20/20)*Math.PI*2 + now*0.3;
-                const R = baseScale*0.8, r = baseScale*0.4;
-                positions[i*3] = (R+r*Math.cos(v))*Math.cos(u);
-                positions[i*3+1] = (R+r*Math.cos(v))*Math.sin(u);
-                positions[i*3+2] = r*Math.sin(v);
-            } else {
-                const u = chId * t * 4 + now * 0.1;
-                const v = (chId + 2) * t * 4 + now * 0.2;
-                const ripple = Math.sin(chId * 3 * t + now * 0.5) * (baseScale * 0.1);
-                const r = baseScale * 0.5 + ripple;
-                positions[i*3] = (baseScale * 0.9 + r * Math.cos(v)) * Math.cos(u);
-                positions[i*3+1] = (baseScale * 0.9 + r * Math.sin(v)) * Math.sin(u);
-                positions[i*3+2] = r * Math.sin(v);
-            }
+    positions[i * 3]     = lutSin(chId * t + now * 0.5) * baseScale;
+    positions[i * 3 + 1] = lutSin((chId + 1) * t) * baseScale;
+    positions[i * 3 + 2] = 0;
+} else if (visMode === 1) {
+    const u = (Math.floor(i/20)/20)*Math.PI*2 + now*0.2;
+    const v = (i%20/20)*Math.PI*2 + now*0.3;
+    const R = baseScale*0.8, r = baseScale*0.4;
+    positions[i*3]   = (R + r*lutCos(v)) * lutCos(u);
+    positions[i*3+1] = (R + r*lutCos(v)) * lutSin(u);
+    positions[i*3+2] = r * lutSin(v);
+} else {
+    const u = chId * t * 4 + now * 0.1;
+    const v = (chId + 2) * t * 4 + now * 0.2;
+    const ripple = lutSin(chId * 3 * t + now * 0.5) * (baseScale * 0.1);
+    const r = baseScale * 0.5 + ripple;
+    positions[i*3]   = (baseScale * 0.9 + r*lutCos(v)) * lutCos(u);
+    positions[i*3+1] = (baseScale * 0.9 + r*lutSin(v)) * lutSin(u);
+    positions[i*3+2] = r * lutSin(v);
+}
+
         }
         particleSystem.geometry.attributes.position.needsUpdate = true;
         particleSystem.rotation.z = now * 0.05;
