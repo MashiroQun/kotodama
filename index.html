@@ -33,12 +33,13 @@
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 
         #bonji-bg {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
             font-family: 'Noto Sans Siddham', sans-serif; font-size: 50vh; 
-            color: rgba(0, 0, 0, 1);
-            -webkit-text-stroke: 2px rgba(50, 50, 50, 0.5);
+            color: rgba(0, 0, 0, 0.8);
+            /* ★ 梵字の視認性アップ：うっすら白いフチ取りを追加 */
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
             text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color);
-            opacity: 0.2; z-index: 1; pointer-events: none;
+            opacity: 0.4; z-index: 1; pointer-events: none;
         }
 
         #ui-layer {
@@ -61,11 +62,11 @@
         #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 40vh; }
 
         #chakra-ring {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
             width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); 
-            border: 4px solid rgba(255, 255, 255, 0.1); border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%;
             box-shadow: 0 0 30px var(--accent-color); 
-            z-index: -1; opacity: 0.2; pointer-events: none;
+            z-index: -1; opacity: 0.4; pointer-events: none;
         }
 
         .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; }
@@ -86,12 +87,11 @@
         .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
         .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
 
-        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 2vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.3s; width: 100%; margin-bottom: 2vh; }
-        #action-btn:active { background-color: var(--accent-color); color: #000; }
+        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 2vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 2vh; touch-action: manipulation; }
+        #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
 
         #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-        /* 3つのボタンが綺麗に収まるようにフォントサイズを微調整 */
-        .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; }
+        .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
         .toggle-btn:active { background: rgba(255,255,255,0.3); }
     </style>
 </head>
@@ -145,7 +145,6 @@
         let visMode = 2; const visNames = ['VIS: 2Dサイマ', 'VIS: 3Dトーラス', 'VIS: 統合3D'];
         let tuningMode = 0; const tuneNames = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
         
-        // ★ 呼吸モードの変数
         let breathMode = 0; const breathNames = ['呼吸: 8秒', '呼吸: 16秒'];
 
         // --- Tone.js Setup ---
@@ -201,7 +200,7 @@
         
         const btnVis = document.getElementById('btn-vis');
         const btnTune = document.getElementById('btn-tune');
-        const btnBreath = document.getElementById('btn-breath'); // 追加
+        const btnBreath = document.getElementById('btn-breath'); 
 
         chakraData.forEach((chakra, index) => {
             const btn = document.createElement('button');
@@ -252,26 +251,29 @@
 
         btnVis.onclick = () => { visMode = (visMode + 1) % 3; btnVis.innerText = visNames[visMode]; };
         btnTune.onclick = () => { tuningMode = (tuningMode + 1) % 3; btnTune.innerText = tuneNames[tuningMode]; updateAudioAndUI(); };
-        // ★ 深呼吸ボタンのクリック処理
         btnBreath.onclick = () => { breathMode = (breathMode + 1) % 2; btnBreath.innerText = breathNames[breathMode]; };
 
         selectChakra(currentChakraIndex);
 
         actionBtn.onclick = async () => {
+            if (isStopping) return; // 停止処理中の連打バグ防止
+
             if (!isTuning) {
-                await Tone.start();
-                if (Tone.context.state !== 'running') await Tone.context.resume();
+                // ★ レスポンス改善: オーディオの起動を待つ前に、即座にUIを切り替える！
+                isTuning = true;
+                actionBtn.innerText = "TUNING STOP";
+                
+                // その後、裏でオーディオを起動する
+                if (Tone.context.state !== 'running') await Tone.start();
                 if (!oscStarted) { osc.start(); oscStarted = true; }
 
                 osc.frequency.value = tuningMode === 2 ? solfeggioFreqs[currentChakraIndex] : Tone.Frequency(chakraData[currentChakraIndex].note).transpose(tuningMode * 12).toFrequency();
                 env.triggerAttack();
                 
-                actionBtn.innerText = "TUNING STOP";
-                isTuning = true; isStopping = false;
-            } else if (!isStopping) {
-                isStopping = true; stopStartTime = performance.now();
+            } else {
+                isStopping = true; 
+                stopStartTime = performance.now();
                 env.triggerRelease();
-                
                 actionBtn.innerText = "TUNING START";
 
                 setTimeout(() => {
@@ -281,12 +283,13 @@
                         Tone.context.suspend(); 
 
                         const colorStr = chakraData[currentChakraIndex].strColor;
-                        bonjiBg.style.transform = `translate(-50%, -50%) scale(1)`;
-                        bonjiBg.style.opacity = "0.2";
+                        // 停止中は50%サイズで待機
+                        bonjiBg.style.transform = `translate(-50%, -50%) scale(0.5)`;
+                        bonjiBg.style.opacity = "0.4";
                         bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 20px ${colorStr}`;
 
-                        chakraRing.style.transform = `translate(-50%, -50%) scale(1)`;
-                        chakraRing.style.opacity = "0.2";
+                        chakraRing.style.transform = `translate(-50%, -50%) scale(0.5)`;
+                        chakraRing.style.opacity = "0.4";
                         chakraRing.style.boxShadow = `0 0 30px ${colorStr}`;
                     }
                 }, 3000); 
@@ -296,8 +299,6 @@
         // --- WebGL 描画ループ ---
         let lastDrawTime = 0;
         const fpsInterval = 1000 / 30; 
-        
-        // ★ 呼吸の「位相(フェーズ)」を記録する変数。切り替え時にカクつかないための工夫。
         let breathPhase = -Math.PI / 2; 
 
         function animate(currentTime) {
@@ -315,7 +316,7 @@
             }
 
             const now = performance.now() * 0.001;
-            const dt = elapsedSinceLastDraw / 1000; // 前のフレームからの経過時間(秒)
+            const dt = elapsedSinceLastDraw / 1000; 
             
             let fadeAlpha = 1.0;
             if (isStopping) {
@@ -323,12 +324,11 @@
                 fadeAlpha = Math.max(0, 1.0 - elapsed);
             }
 
-            // ★ 呼吸の速度計算（モード0なら8秒、モード1なら16秒で1サイクル）
             const targetPeriod = breathMode === 0 ? 8 : 16;
             const angularFreq = (Math.PI * 2) / targetPeriod;
-            breathPhase += angularFreq * dt; // 位相を少しずつ進める
+            breathPhase += angularFreq * dt; 
 
-            // 算出した位相を使って脈動を計算
+            // pulseは 0.0 〜 1.0 を行き来する
             const pulse = ((Math.sin(breathPhase) + 1) / 2) * fadeAlpha; 
             
             material.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
@@ -336,13 +336,16 @@
 
             const colorStr = chakraData[currentChakraIndex].strColor;
             
-            bonjiBg.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.15})`;
-            bonjiBg.style.opacity = (0.2 + (pulse * 0.3)) * fadeAlpha;
-            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 20}px ${colorStr}`;
+            // ★ 円と梵字を50%〜100%の間でダイナミックに拡大縮小させる (0.5 + 0.5 * pulse)
+            const scaleValue = 0.5 + (pulse * 0.5); 
 
-            chakraRing.style.transform = `translate(-50%, -50%) scale(${1 + pulse * 0.05})`;
-            chakraRing.style.opacity = (0.2 + (pulse * 0.4)) * fadeAlpha;
-            chakraRing.style.boxShadow = `0 0 ${30 + pulse * 20}px ${colorStr}`;
+            bonjiBg.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
+            bonjiBg.style.opacity = (0.4 + (pulse * 0.4)) * fadeAlpha;
+            bonjiBg.style.textShadow = `0 0 30px rgba(0,0,0,1), 0 0 ${20 + pulse * 30}px ${colorStr}`;
+
+            chakraRing.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
+            chakraRing.style.opacity = (0.4 + (pulse * 0.4)) * fadeAlpha;
+            chakraRing.style.boxShadow = `0 0 ${30 + pulse * 30}px ${colorStr}`;
 
             const chId = chakraData[currentChakraIndex].id;
             const positions = particleSystem.geometry.attributes.position.array;
