@@ -174,11 +174,14 @@
         renderer.setPixelRatio(pixelRatio); 
         container.appendChild(renderer.domElement);
 
-        // 元のCPU計算方式のためのジオメトリとマテリアル
-        const particleCount = 500; 
+        // 画面の横幅に応じて、パーティクル数を 400〜1200 の間で動的に決める
+        // (スマホなら400前後、iPadなら1000前後、PCなら1200になる計算)
+        const particleCount = Math.min(Math.max(window.innerWidth, 400), 1200);
+
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+       
 
         const material = new THREE.PointsMaterial({
             size: 4,
