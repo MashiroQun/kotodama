@@ -114,7 +114,7 @@
     const CONFIG = isIPhone
         ? { fps: 30, particles: 200, pixelRatio: Math.min(window.devicePixelRatio * 0.5, 1.0) }
         : isIPad
-        ? { fps: 30, particles: 350, pixelRatio: Math.min(window.devicePixelRatio * 0.6, 1.0) }
+        ? { fps: 30, particles: 300, pixelRatio: Math.min(window.devicePixelRatio * 0.5, 1.0) }
         : { fps: 60, particles: 600, pixelRatio: Math.min(window.devicePixelRatio, 1.0) };
 
     const TARGET_INTERVAL = 1000 / CONFIG.fps;
@@ -368,13 +368,24 @@
         const pulse   = (Math.sin(breathPhase) + 1) * 0.5;
 
         // ▼ CSS変数setPropertyを廃止→style直接書き込み（毎フレームのスタイル再計算を回避）
-        const bonjiOpacity = (0.3 + pulse * 0.5) * fadeAlpha;
-        const ringScale    = 0.5 + pulse * 0.5;
-        const ringOpacity  = (0.2 + pulse * 0.4) * fadeAlpha;
+        // ▼ 変更後：drawFrame内の該当箇所
+const bonjiOpacity = ((0.3 + pulse * 0.5) * fadeAlpha).toFixed(2); // 精度を2桁に
+const ringScale    = (0.5 + pulse * 0.5).toFixed(2);
+const ringOpacity  = ((0.2 + pulse * 0.4) * fadeAlpha).toFixed(2);
 
-        bonjiBg.style.opacity    = bonjiOpacity.toFixed(3);
-        chakraRing.style.opacity = ringOpacity.toFixed(3);
-        chakraRing.style.transform = `translate(-50%, -50%) scale(${ringScale.toFixed(3)})`;
+// 「前回の値」と違う時だけ、実際にDOMに書き込む
+if (lastBonjiOpacity !== bonjiOpacity) {
+    bonjiBg.style.opacity = bonjiOpacity;
+    lastBonjiOpacity = bonjiOpacity;
+}
+
+if (lastRingOpacity !== ringOpacity || lastRingScale !== ringScale) {
+    chakraRing.style.opacity = ringOpacity;
+    chakraRing.style.transform = `translate(-50%, -50%) scale(${ringScale})`;
+    lastRingOpacity = ringOpacity;
+    lastRingScale = ringScale;
+}
+
 
         // Shader uniform更新
         material.uniforms.uTime.value    = now;
