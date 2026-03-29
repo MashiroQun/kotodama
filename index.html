@@ -24,14 +24,14 @@
     :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
     html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
     #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-    #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; }
+   #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: var(--bonji-opacity, 0.4); z-index: 1; pointer-events: none; will-change: opacity; }
     #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 5vh) + 3vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
     #ui-layer > * { pointer-events: auto; }
     header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
     .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
     .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
     #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 40vh; }
-    #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; }
+    #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--ring-scale, 0.5)); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: var(--ring-opacity, 0.4); pointer-events: none; will-change: transform, opacity; }
     .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; }
     .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); margin-bottom: 1vh; transition: color 0.5s; }
     .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; }
@@ -99,7 +99,6 @@
     let isTuning = false;
     let isStopping = false;
     let stopStartTime = 0;
-    let oscStarted = false;
     let visMode = 2;
     let tuningMode = 0;
     let breathMode = 0;
@@ -112,10 +111,10 @@
     const isIPhone = /iPhone/.test(navigator.userAgent);
     const isIPad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
     const CONFIG = isIPhone
-        ? { fps: 30, particles: 400, pixelRatio: window.devicePixelRatio * 0.7 }
+        ? { fps: 30, particles: 350, pixelRatio: window.devicePixelRatio * 0.6 }
         : isIPad
-        ? { fps: 30, particles: 600, pixelRatio: 1.0 }
-        : { fps: 60, particles: 1500, pixelRatio: window.devicePixelRatio };
+        ? { fps: 30, particles: 500, pixelRatio: 0.8 }
+        : { fps: 60, particles: 1000, pixelRatio: window.devicePixelRatio };
 
     // DOM要素
     const bonjiBg = document.getElementById('bonji-bg');
@@ -137,8 +136,9 @@
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
     const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
+    osc.start(); // 一度だけ起動
 
-    // --- 4. 関数定義 ---
+       // --- 4. 関数定義 (ここから上書き) ---
 
     function initThree() {
         if (renderer) return;
@@ -268,11 +268,10 @@
             isTuning = true;
             actionBtn.innerText = "TUNING STOP";
             if (Tone.context.state !== 'running') await Tone.start();
-            await Tone.context.resume();
             reverb.wet.value = 0.4;
             delay.wet.value = 0.15;
             initThree();
-            if (!oscStarted) { osc.start(); oscStarted = true; }
+            osc.volume.value = -6;
             updateAudioAndUI();
             env.triggerAttack();
             startLoop();
@@ -282,8 +281,7 @@
             actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
             env.triggerRelease();
-            reverb.wet.value = 0;
-            delay.wet.value = 0;
+            setTimeout(() => { osc.volume.rampTo(-Infinity, 1.0); }, 1000);
 
             setTimeout(async () => {
                 try {
@@ -292,16 +290,13 @@
                     disposeThree();
                 } catch(e) { console.log(e); }
                 finally {
-                    isTuning = false;
+                    isTuning = false; // iは1つに修正
                     isStopping = false;
                     actionBtn.disabled = false;
                     actionBtn.innerText = "TUNING START";
-                    osc.stop();
-                    oscStarted = false;
-                    // リセット処理
-                    bonjiBg.style.opacity = "0.4";
-                    chakraRing.style.transform = `translate(-50%, -50%) scale(0.5)`;
-                    chakraRing.style.opacity = "0.4";
+                    document.documentElement.style.setProperty('--bonji-opacity', 0.4);
+                    document.documentElement.style.setProperty('--ring-scale', 0.5);
+                    document.documentElement.style.setProperty('--ring-opacity', 0.4);
                 }
             }, 3500);
         }
@@ -310,23 +305,26 @@
     function startLoop() {
         if (rafId) return;
         lastDrawTime = performance.now();
-        const frameInterval = 1000 / CONFIG.fps;
-        rafId = setInterval(() => { requestAnimationFrame(drawFrame); }, frameInterval);
+        function loop(currentTime) {
+            rafId = requestAnimationFrame(loop);
+            drawFrame(currentTime);
+        }
+        rafId = requestAnimationFrame(loop);
     }
 
     function stopLoop() {
-        if (rafId) { clearInterval(rafId); rafId = null; }
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     }
 
     function drawFrame(currentTime) {
         if (!renderer || !material) return;
-        if (!currentTime) currentTime = performance.now();
         
         const elapsed = currentTime - lastDrawTime;
+        if (elapsed < 1000 / CONFIG.fps) return;
+
         lastDrawTime = currentTime;
-        
+        const dt = elapsed / 1000;
         const now = currentTime * 0.001;
-        const dt = Math.min(elapsed / 1000, 0.1);
         
         let fadeAlpha = 1.0;
         if (isStopping) {
@@ -335,14 +333,12 @@
 
         const targetPeriod = breathMode === 0 ? 8 : 16;
         breathPhase += ((Math.PI * 2) / targetPeriod) * dt;
-        const pulse = ((Math.sin(breathPhase) + 1) / 2) * fadeAlpha;
+        const pulse = (Math.sin(breathPhase) + 1) / 2;
 
-        // 【ここが復活！】背景の梵字とリングを動かす
-        bonjiBg.style.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
-        chakraRing.style.transform = `translate(-50%, -50%) scale(${0.5 + pulse * 0.5})`;
-        chakraRing.style.opacity = (0.2 + pulse * 0.4) * fadeAlpha;
+        document.documentElement.style.setProperty('--bonji-opacity', (0.3 + pulse * 0.5) * fadeAlpha);
+        document.documentElement.style.setProperty('--ring-scale', 0.5 + pulse * 0.5);
+        document.documentElement.style.setProperty('--ring-opacity', (0.2 + pulse * 0.4) * fadeAlpha);
 
-        // 3Dパーティクルの更新
         material.uniforms.uTime.value = now;
         material.uniforms.uPulse.value = pulse;
         material.uniforms.uOpacity.value = (0.3 + pulse * 0.6) * fadeAlpha;
@@ -350,6 +346,9 @@
         particleSystem.rotation.z = now * 0.05;
         renderer.render(scene, camera);
     }
+
+    // --- (ここまで上書き) ---
+
 
     // --- 5. イベント設定 ---
     chakraData.forEach((chakra, index) => {
