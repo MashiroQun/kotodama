@@ -114,8 +114,8 @@
     const CONFIG = isIPhone
         ? { fps: 30, particles: 200, pixelRatio: Math.min(window.devicePixelRatio * 0.5, 1.0) }
         : isIPad
-        ? { fps: 30, particles: 350, pixelRatio: Math.min(window.devicePixelRatio * 0.6, 1.5) }
-        : { fps: 60, particles: 800, pixelRatio: Math.min(window.devicePixelRatio, 2.0) };
+        ? { fps: 30, particles: 350, pixelRatio: Math.min(window.devicePixelRatio * 0.6, 1.0) }
+        : { fps: 60, particles: 600, pixelRatio: Math.min(window.devicePixelRatio, 1.0) };
 
     const TARGET_INTERVAL = 1000 / CONFIG.fps;
 
