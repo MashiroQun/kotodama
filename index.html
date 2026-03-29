@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
     <title>言霊チューナー</title>
     
@@ -23,23 +22,23 @@
             --glass-blur: blur(15px);
         }
 
-        /* スクロールとバウンスを完全に防止する設定 */
         html, body {
             margin: 0; padding: 0; width: 100%; 
-            height: 100dvh; /* 100%から100dvh（動的ビューポート）に変更 */
+            height: 100dvh; 
             background-color: var(--bg-color); color: var(--text-color);
             font-family: 'Inter', sans-serif; font-weight: 100;
             overflow: hidden; 
-            touch-action: none; /* デフォルトのスクロールやズームをブラウザレベルで禁止 */
+            touch-action: none; 
         }
 
         #visualizer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 
         #bonji-bg {
             position: absolute; 
-            top: 55%; 
+            top: 50%; /* 55%から50%に戻して中央に配置 */
             left: 50%; transform: translate(-50%, -50%);
-            font-family: 'Noto Sans Siddham', sans-serif; font-size: 55vh; 
+            font-family: 'Noto Sans Siddham', sans-serif; 
+            font-size: 50vh; /* 少し小さくして圧迫感を減らす */
             color: rgba(0, 0, 0, 1);
             -webkit-text-stroke: 3px rgba(10, 10, 10, 0.5);
             text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color);
@@ -51,31 +50,33 @@
             position: relative; z-index: 3; 
             display: flex; flex-direction: column; justify-content: space-between; align-items: center;
             height: 100%; 
-            /* ★ iPhoneのダイナミックアイランド(上)とホームインジケーター(下)を避けるセーフエリア設定 */
-            padding-top: calc(env(safe-area-inset-top, 20px) + 10px);
-            padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 10px);
-            padding-left: 20px;
-            padding-right: 20px;
+            /* パーセンテージとenvを組み合わせて柔軟な余白に */
+            padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh);
+            padding-bottom: calc(env(safe-area-inset-bottom, 5vh) + 3vh);
+            padding-left: 5%;
+            padding-right: 5%;
             box-sizing: border-box;
             background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent 40%, rgba(0,0,0,0.8));
             pointer-events: none;
         }
         #ui-layer > * { pointer-events: auto; }
 
-        header { flex: 0 0 auto; text-align: center; margin-top: 5px; }
-        .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 5px; color: #FFF; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
-        .title-sub { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 5px; transition: color 0.5s; }
+        header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
+        .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; text-shadow: 0 2px 5px rgba(0,0,0,0.8); }
+        .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
 
         #central-node { 
             flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; 
             width: 100%; position: relative; 
+            min-height: 40vh; /* 最小高さを確保 */
         }
 
         #chakra-ring {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 290px; height: 290px; 
+            width: clamp(240px, 75vw, 320px); /* 画面幅に応じてサイズ変更 */
+            height: clamp(240px, 75vw, 320px); 
             border: 6px solid rgba(255, 255, 255, 0.2); 
             border-radius: 50%;
             box-shadow: 
@@ -88,48 +89,56 @@
             transition: box-shadow 0.5s, border-color 0.5s, opacity 0.5s;
         }
 
-        .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: 20px; letter-spacing: 6px; opacity: 0.8; margin-bottom: -15px; text-shadow: 0 2px 5px rgba(0,0,0,0.9); }
+        .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; text-shadow: 0 2px 5px rgba(0,0,0,0.9); }
         
         .kanji {
-            font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: 130px; 
+            font-family: 'Noto Sans JP', sans-serif; font-weight: 900; 
+            font-size: clamp(100px, 30vw, 140px); /* フォントサイズも動的に */
             color: var(--accent-color);
             text-shadow: 0px 5px 15px rgba(0,0,0,1), 0px 0px 10px rgba(0,0,0,0.8), 0px 0px 30px rgba(0,0,0,0.6);
-            margin-bottom: 5px; transition: color 0.5s;
+            margin-bottom: 1vh; transition: color 0.5s;
         }
         
-        .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: 24px; letter-spacing: 4px; font-weight: 400; color: #EEE; text-shadow: 0 2px 5px rgba(0,0,0,0.9); }
+        .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; text-shadow: 0 2px 5px rgba(0,0,0,0.9); }
         
-        .note-display { font-size: 16px; font-weight: 700; opacity: 1; margin-top: 10px; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; text-shadow: 0 2px 10px rgba(0,0,0,1), 0 0 5px rgba(0,0,0,0.8);}
+        .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; opacity: 1; margin-top: 1vh; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; text-shadow: 0 2px 10px rgba(0,0,0,1), 0 0 5px rgba(0,0,0,0.8);}
 
         #control-panel {
             flex: 0 0 auto; background-color: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 15px 20px; text-align: center; margin-bottom: 5px; width: 90%; max-width: 400px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; 
+            padding: 3% 5%; /* パディングもパーセンテージに */
+            text-align: center; 
+            margin-bottom: 0; /* マージンを削除し、ui-layerのpaddingに依存させる */
+            width: 100%; max-width: 400px;
         }
 
-        #meaning { font-size: 14px; opacity: 0.9; margin-bottom: 15px; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
+        #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 2vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
         
-        #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 15px; }
+        #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 2vh; }
         .chakra-btn {
-            flex: 1; aspect-ratio: 1 / 1; max-width: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2);
+            flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2);
             background: rgba(0,0,0,0.3); cursor: pointer; transition: all 0.3s;
             display: flex; justify-content: center; align-items: center;
-            color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14px; padding: 0;
+            color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; 
+            font-size: clamp(12px, 3.5vw, 16px); padding: 0;
         }
         .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 15px rgba(255,255,255,0.9); transform: scale(1.1); color: #FFF; text-shadow: 0 0 5px #000; }
 
         #action-btn {
             background: rgba(0,0,0,0.6); border: 2px solid var(--accent-color); color: var(--accent-color);
-            padding: 12px 30px; border-radius: 35px; font-size: 18px; font-family: 'Inter', sans-serif;
+            padding: 2.5vh 5vw; border-radius: 35px; 
+            font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif;
             letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.3s;
-            text-shadow: 0 0 10px var(--accent-color); width: 100%; margin-bottom: 15px;
+            text-shadow: 0 0 10px var(--accent-color); width: 100%; margin-bottom: 2vh;
         }
         #action-btn:active { background-color: var(--accent-color); color: #000; text-shadow: none; }
 
-        #debug-panel { display: flex; justify-content: space-between; gap: 10px; width: 100%; }
+        #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
         .toggle-btn {
             flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-            color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: 11px;
-            padding: 10px 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
+            color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; 
+            font-size: clamp(9px, 2.5vw, 12px);
+            padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 1px;
         }
         .toggle-btn:active { background: rgba(255,255,255,0.3); }
     </style>
@@ -166,12 +175,9 @@
     </div>
 
     <script>
-        // ★ スクロール防止用のスクリプトを追加 ★
-        // これにより、画面を上下にスワイプしてもPWA特有の余白が出なくなります。
         document.addEventListener('touchmove', function(event) {
             event.preventDefault();
         }, { passive: false });
-
 
         const chakraData = [
             { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命 / 会陰" },
