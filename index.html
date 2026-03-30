@@ -109,9 +109,9 @@
 
     // ▼ さらなる省電力化のため、解像度を0.3に低下（見た目の柔らかさは維持）
     const CONFIG = isIPhone
-        ? { particles: 200, pixelRatio: 0.3 }
+        ? { particles: 200, pixelRatio: 0.35 }
         : isIPad
-        ? { particles: 350, pixelRatio: 0.45 }
+        ? { particles: 330, pixelRatio: 0.45 }
         : { particles: 500, pixelRatio: 0.5 };
 
     const bonjiBg       = document.getElementById('bonji-bg');
