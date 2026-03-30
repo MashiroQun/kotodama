@@ -109,9 +109,9 @@
 
     // ▼ さらなる省電力化のため、解像度を0.3に低下（見た目の柔らかさは維持）
     const CONFIG = isIPhone
-        ? { particles: 200, pixelRatio: 0.35 }
+        ? { particles: 200, pixelRatio: 0.4 }
         : isIPad
-        ? { particles: 320, pixelRatio: 0.4 }
+        ? { particles: 330, pixelRatio: 0.5 }
         : { particles: 500, pixelRatio: 0.5 };
 
     const bonjiBg       = document.getElementById('bonji-bg');
@@ -347,7 +347,7 @@
         drawFrame(ts);
     }
 
-    function drawFrame(ts) {
+        function drawFrame(ts) {
         if (!renderer || !material) return;
 
         const currentNow = performance.now();
@@ -360,25 +360,20 @@
 
         const elapsedSec = (currentNow - tuneStartTime) * 0.001;
         
-        // ▼ 人間の感覚に基づいた呼吸ロジック（インターバルは数えない）
-        const activeSec = breathMode === 0 ? 4.0 : 8.0; // 吸う・吐くの実働時間
-        const holdSec = 1.0; // 切り替えのタメ時間
-        const period = activeSec * 2 + holdSec * 2; // トータル周期 (10秒 or 18秒)
+        const activeSec = breathMode === 0 ? 4.0 : 8.0; 
+        const holdSec = 1.0; 
+        const period = activeSec * 2 + holdSec * 2; 
         const t = elapsedSec % period;
         let pulse = 0;
 
         if (t < holdSec) {
-            // 吐き切った後のインターバル
             pulse = 0.0;
         } else if (t < holdSec + activeSec) {
-            // 吸う（コサイン補間で滑らかに立ち上がる）
             const phaseT = t - holdSec;
             pulse = (1.0 - Math.cos((phaseT / activeSec) * Math.PI)) * 0.5;
         } else if (t < holdSec * 2 + activeSec) {
-            // 吸い切った後のインターバル
             pulse = 1.0;
         } else {
-            // 吐く（コサイン補間で滑らかに落ち着く）
             const phaseT = t - (holdSec * 2 + activeSec);
             pulse = (1.0 + Math.cos((phaseT / activeSec) * Math.PI)) * 0.5;
         }
@@ -396,12 +391,15 @@
 
         material.uniforms.uTime.value    = shaderAccumulatedTime;
         material.uniforms.uPulse.value   = pulse;
-        material.uniforms.uOpacity.value = (0.3 + pulse * 0.6) * fadeAlpha;
+        
+        // ▼ ここを変更！呼吸(pulse)による明るさ変更をやめ、常に0.6の明るさ(×フェードアウト係数)に固定
+        material.uniforms.uOpacity.value = 0.6 * fadeAlpha;
 
         particleSystem.rotation.z += deltaSec * 0.05;
 
         renderer.render(scene, camera);
     }
+
 
     chakraData.forEach((chakra, index) => {
         const btn = document.createElement('button');
