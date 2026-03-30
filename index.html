@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -42,6 +43,7 @@
     .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
 </style>
+
 </head>
 <body>
     <div id="webgl-container"></div>
@@ -71,41 +73,58 @@
     </div>
 
 <script>
+    // =============================================
+    // データ定義
+    // =============================================
     const chakraData = [
-        { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命 / 会陰" },
-        { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪", meaning: "水 / 創造 / 感情 / 丹田" },
-        { id: 3, kanji: "陽", yomi: "よう", on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨", meaning: "火 / 意志 /活力 / みぞおち" },
-        { id: 4, kanji: "和", yomi: "わ", on: "オ", phonetic: "o", note: "F3", solfege: "ファ", color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮", meaning: "風 / 調和 / 愛 / 胸" },
-        { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏", meaning: "空 / 表現 / 空間 / 喉" },
-        { id: 6, kanji: "理", yomi: "ことわり", on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌", meaning: "識 / 直感 / 叡智 / 眉間" },
-        { id: 7, kanji: "宙", yomi: "そら", on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
+        { id: 1, kanji: "地", yomi: "ち",     on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
+        { id: 2, kanji: "海", yomi: "うみ",   on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
+        { id: 3, kanji: "陽", yomi: "よう",   on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",      meaning: "火 / 意志 /活力 / みぞおち" },
+        { id: 4, kanji: "和", yomi: "わ",     on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",     meaning: "風 / 調和 / 愛 / 胸" },
+        { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏",      meaning: "空 / 表現 / 空間 / 喉" },
+        { id: 6, kanji: "理", yomi: "ことわり",on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌",     meaning: "識 / 直感 / 叡智 / 眉間" },
+        { id: 7, kanji: "宙", yomi: "そら",   on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
     ];
-    const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
-    const visNames = ['VIS: 2Dサイマ', 'VIS: 3Dトーラス', 'VIS: 統合3D'];
-    const tuneNames = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
-    const breathNames = ['呼吸: 8秒', '呼吸: 16秒'];
 
+    const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
+    const visNames   = ['VIS: 2Dサイマ', 'VIS: 3Dトーラス', 'VIS: 統合3D'];
+    const tuneNames  = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
+    const breathNames= ['呼吸: 8秒', '呼吸: 16秒'];
+
+    // =============================================
+    // 状態変数
+    // =============================================
     let currentChakraIndex = 0;
-    let isTuning = false;
-    let isStopping = false;
+    let isTuning    = false;
+    let isStopping  = false;
     let stopStartTime = 0;
-    let visMode = 2;
-    let tuningMode = 0;
-    let breathMode = 0;
-    
+    let visMode     = 2;
+    let tuningMode  = 0;
+    let breathMode  = 0;
+
     let rafId = null;
     let lastTs = 0;
     let prevPulseForDOM = -1;
 
-    let tuneStartTime = 0;
-    let shaderAccumulatedTime = 0;
-    let lastRenderRealTime = 0;
+    let tuneStartTime        = 0;
+    let shaderAccumulatedTime= 0;
+    let lastRenderRealTime   = 0;
 
-    const TARGET_FPS = 24;
+    // =============================================
+    // [修正①] float()をファイル先頭で定義（initThreeより前）
+    // =============================================
+    function float(v) { return parseFloat(v); }
+
+    // =============================================
+    // [省電力] TARGET_FPSを24→20に下げる
+    //   体感差はほぼなく、描画負荷が約17%減
+    // =============================================
+    const TARGET_FPS      = 20;
     const TARGET_INTERVAL = 1000 / TARGET_FPS;
 
+    // デバイス判定
     const isIPhone = /iPhone/.test(navigator.userAgent);
-    const isIPad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
+    const isIPad   = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
 
     const CONFIG = isIPhone
         ? { particles: 250, pixelRatio: 0.5 }
@@ -113,36 +132,47 @@
         ? { particles: 330, pixelRatio: 0.5 }
         : { particles: 500, pixelRatio: 0.5 };
 
-    const bonjiBg       = document.getElementById('bonji-bg');
-    const chakraRing    = document.getElementById('chakra-ring');
-    const kanjiDisplay  = document.getElementById('kanji-display');
-    const yomiDisplay   = document.getElementById('yomi-display');
-    const onDisplay     = document.getElementById('on-display');
-    const noteDisplay   = document.getElementById('note-display');
-    const meaningDisplay= document.getElementById('meaning');
-    const actionBtn     = document.getElementById('action-btn');
-    const chakraSelector= document.getElementById('chakra-selector');
-    const btnVis        = document.getElementById('btn-vis');
-    const btnTune       = document.getElementById('btn-tune');
-    const btnBreath     = document.getElementById('btn-breath');
+    // DOM参照
+    const bonjiBg        = document.getElementById('bonji-bg');
+    const chakraRing     = document.getElementById('chakra-ring');
+    const kanjiDisplay   = document.getElementById('kanji-display');
+    const yomiDisplay    = document.getElementById('yomi-display');
+    const onDisplay      = document.getElementById('on-display');
+    const noteDisplay    = document.getElementById('note-display');
+    const meaningDisplay = document.getElementById('meaning');
+    const actionBtn      = document.getElementById('action-btn');
+    const chakraSelector = document.getElementById('chakra-selector');
+    const btnVis         = document.getElementById('btn-vis');
+    const btnTune        = document.getElementById('btn-tune');
+    const btnBreath      = document.getElementById('btn-breath');
 
+    // Three.js オブジェクト
     let renderer, scene, camera, particleSystem, material;
 
-    Tone.context.lookAhead = 0.2; 
+    // =============================================
+    // [修正②ノイズ対策] lookAheadを0.2→0.35に上げる
+    //   バッファが小さすぎるとiOSではグリッチが起きやすい
+    // =============================================
+    Tone.context.lookAhead = 0.35;
 
+    // =============================================
+    // オーディオチェーン構築
+    // =============================================
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
     const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
-    
-    // ※ ここにあった osc.start(); は削除し、toggleTuning内に移動しました。
+    // ※ osc.start()はここでは呼ばない。toggleTuning内で制御する。
 
+    // =============================================
+    // Three.js 初期化
+    // =============================================
     function initThree() {
         if (renderer) return;
         const container = document.getElementById('webgl-container');
-        scene    = new THREE.Scene();
-        camera   = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        scene  = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
 
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
@@ -151,13 +181,14 @@
         container.appendChild(renderer.domElement);
 
         const count = CONFIG.particles;
-        const geometry = new THREE.BufferGeometry();
+        const geometry  = new THREE.BufferGeometry();
         const positions = new Float32Array(count * 3);
         const indices   = new Float32Array(count);
         for (let i = 0; i < count; i++) indices[i] = i / count;
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('aIndex',   new THREE.BufferAttribute(indices,    1));
 
+        // [省電力] vertexShaderにprecision mediump floatを明示
         material = new THREE.ShaderMaterial({
             uniforms: {
                 uTime:     { value: 0.0 },
@@ -168,6 +199,7 @@
                 uOpacity:  { value: 0.0 }
             },
             vertexShader: `
+                precision mediump float;
                 uniform float uTime;
                 uniform float uPulse;
                 uniform float uChakraId;
@@ -176,8 +208,8 @@
                 const float PI2 = 6.2831853;
 
                 void main() {
-                    float isOuter = step(0.5, aIndex);
-                    float dir = isOuter == 1.0 ? -1.0 : 1.0;
+                    float isOuter  = step(0.5, aIndex);
+                    float dir      = isOuter == 1.0 ? -1.0 : 1.0;
                     float scaleMul = isOuter == 1.0 ? 1.25 : 0.75;
 
                     float t = fract(aIndex * 2.0) * PI2;
@@ -200,18 +232,18 @@
                         float v = (uChakraId + 2.0) * t * 4.0 + uTime * 0.2;
                         float cu = cos(u); float su = sin(u);
                         float cv = cos(v); float sv = sin(v);
-                        float r = S * 0.5;
+                        float r  = S * 0.5;
                         float rc = S * 0.9 + r * cv;
                         pos = vec3(rc * cu, rc * su * sv, r * sv);
                     }
 
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    gl_Position  = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
                     gl_PointSize = (2.5 + uPulse * 2.5) * (isOuter == 1.0 ? 0.7 : 1.3);
                 }
             `,
             fragmentShader: `
                 precision mediump float;
-                uniform vec3 uColor;
+                uniform vec3  uColor;
                 uniform float uOpacity;
                 void main() {
                     vec2 d = gl_PointCoord - 0.5;
@@ -220,8 +252,8 @@
                 }
             `,
             transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+            blending:    THREE.AdditiveBlending,
+            depthWrite:  false
         });
 
         particleSystem = new THREE.Points(geometry, material);
@@ -229,12 +261,11 @@
         scene.add(particleSystem);
     }
 
-    function float(v) { return parseFloat(v); }
-
-    // メモリリークを防止するためのより丁寧な破棄処理
+    // =============================================
+    // Three.js 破棄（メモリリーク防止）
+    // =============================================
     function disposeThree() {
         if (!renderer) return;
-        
         stopLoop();
 
         if (particleSystem) {
@@ -242,27 +273,23 @@
             particleSystem.geometry.dispose();
             particleSystem.material.dispose();
         }
-        
         renderer.dispose();
-        
         const container = document.getElementById('webgl-container');
         if (container && container.contains(renderer.domElement)) {
             container.removeChild(renderer.domElement);
         }
-        
-        renderer = null;
-        material = null;
-        particleSystem = null;
-        scene = null;
-        camera = null;
+        renderer = null; material = null; particleSystem = null; scene = null; camera = null;
     }
 
+    // =============================================
+    // UI・オーディオ同期
+    // =============================================
     function updateAudioAndUI() {
         const data = chakraData[currentChakraIndex];
-        kanjiDisplay.innerText = data.kanji;
-        yomiDisplay.innerText  = data.yomi;
-        bonjiBg.innerText      = data.bonji;
-        onDisplay.innerText    = `${data.on} / [ ${data.phonetic} ]`;
+        kanjiDisplay.innerText   = data.kanji;
+        yomiDisplay.innerText    = data.yomi;
+        bonjiBg.innerText        = data.bonji;
+        onDisplay.innerText      = `${data.on} / [ ${data.phonetic} ]`;
         meaningDisplay.innerText = data.meaning;
 
         let targetFreqVal;
@@ -287,24 +314,35 @@
             btn.style.backgroundColor = i === currentChakraIndex ? data.strColor : 'rgba(255,255,255,0.1)';
         });
 
-        bonjiBg.style.textShadow  = `0 0 30px rgba(0,0,0,1), 0 0 40px ${data.strColor}`;
+        bonjiBg.style.textShadow   = `0 0 30px rgba(0,0,0,1), 0 0 40px ${data.strColor}`;
         chakraRing.style.boxShadow = `0 0 50px ${data.strColor}`;
 
-        if (isTuning && !isStopping) osc.frequency.rampTo(targetFreqVal, 1.5);
+        // [修正②ノイズ対策] チューニング中は周波数とフィルターを同時に再同期
+        if (isTuning && !isStopping) {
+            osc.frequency.rampTo(targetFreqVal, 1.5);
+            // [修正③ノイズ対策] フィルターカットオフを基音の6倍音に動的追従
+            filter.frequency.rampTo(targetFreqVal * 6, 0.5);
+        }
     }
 
+    // =============================================
+    // チューニング開始／停止
+    // =============================================
     async function toggleTuning() {
         if (isStopping) return;
 
         if (!isTuning) {
+            // --- 開始 ---
             isTuning = true;
             actionBtn.innerText = "TUNING STOP";
+
             if (Tone.context.state !== 'running') await Tone.start();
             reverb.wet.value = 0.4;
             delay.wet.value  = 0.15;
+
             initThree();
-            
-            // チューニング開始時にオシレーターが動いていなければ起動
+
+            // [修正①] osc.state確認後に起動
             if (osc.state !== "started") {
                 osc.start();
             }
@@ -312,24 +350,34 @@
             osc.volume.value = -6;
             updateAudioAndUI();
             env.triggerAttack();
-            
+
             prevPulseForDOM = -1;
-            
+
             const now = performance.now();
-            tuneStartTime = now;
-            lastRenderRealTime = now;
-            shaderAccumulatedTime = 0;
-            lastTs = now;
-            
+            tuneStartTime        = now;
+            lastRenderRealTime   = now;
+            shaderAccumulatedTime= 0;
+            lastTs               = now;
+
             startLoop();
 
         } else {
+            // --- 停止 ---
             isStopping = true;
-            actionBtn.disabled = true;
+            actionBtn.disabled  = true;
             actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
+
             env.triggerRelease();
-            setTimeout(() => { osc.volume.rampTo(-Infinity, 1.0); }, 1000);
+
+            // [修正③] volumeを-Infinityに下げた後にosc.stop()を呼ぶ
+            //   こうすることで次回のisTuning開始チェックが正しく機能する
+            setTimeout(() => {
+                osc.volume.rampTo(-Infinity, 1.0);
+                setTimeout(() => {
+                    if (!isTuning) osc.stop();
+                }, 1200);
+            }, 1000);
 
             setTimeout(async () => {
                 try {
@@ -338,25 +386,27 @@
                     disposeThree();
                 } catch(e) { console.log(e); }
                 finally {
-                    isTuning   = false;
-                    isStopping = false;
-                    actionBtn.disabled = false;
+                    isTuning    = false;
+                    isStopping  = false;
+                    actionBtn.disabled  = false;
                     actionBtn.innerText = "TUNING START";
-                    bonjiBg.style.opacity    = 0.4;
-                    chakraRing.style.opacity = 0.4;
-                    chakraRing.style.transform = "translate(-50%, -50%) scale(0.5)";
+                    bonjiBg.style.opacity      = '0.4';
+                    chakraRing.style.opacity   = '0.4';
+                    chakraRing.style.transform = 'translate(-50%, -50%) scale(0.5)';
                 }
             }, 3500);
         }
     }
 
+    // =============================================
+    // アニメーションループ
+    // =============================================
     function startLoop() {
         if (rafId) return;
         lastTs = performance.now();
-        rafId = requestAnimationFrame(loop);
+        rafId  = requestAnimationFrame(loop);
     }
 
-    // エラー防止のためのループ停止関数
     function stopLoop() {
         if (rafId) {
             cancelAnimationFrame(rafId);
@@ -364,14 +414,15 @@
         }
     }
 
+    // [省電力] isTuningを先頭でチェックし、falseなら即終了
     function loop(ts) {
-        if (!isTuning) return;
+        if (!isTuning) { rafId = null; return; }
         rafId = requestAnimationFrame(loop);
-        
-        const dt = ts - lastTs;
-        if (dt < TARGET_INTERVAL) return;
 
-        lastTs = ts - (dt % TARGET_INTERVAL); 
+        const dt = ts - lastTs;
+        if (dt < TARGET_INTERVAL - 1) return; // 早期リターンで不要な描画を省く
+
+        lastTs = ts - (dt % TARGET_INTERVAL);
         drawFrame(ts);
     }
 
@@ -380,17 +431,17 @@
 
         const currentNow = performance.now();
         let fadeAlpha = 1.0;
-        
+
         if (isStopping) {
             fadeAlpha = Math.max(0, 1.0 - (currentNow - stopStartTime) / 2500);
             if (fadeAlpha <= 0) return;
         }
 
         const elapsedSec = (currentNow - tuneStartTime) * 0.001;
-        
-        const activeSec = breathMode === 0 ? 4.0 : 8.0; 
-        const holdSec = 1.0; 
-        const period = activeSec * 2 + holdSec * 2; 
+
+        const activeSec = breathMode === 0 ? 4.0 : 8.0;
+        const holdSec   = 1.0;
+        const period    = activeSec * 2 + holdSec * 2;
         const t = elapsedSec % period;
         let pulse = 0;
 
@@ -407,14 +458,15 @@
         }
 
         const deltaSec = Math.min((currentNow - lastRenderRealTime) * 0.001, 0.1);
-        lastRenderRealTime = currentNow;
+        lastRenderRealTime     = currentNow;
         shaderAccumulatedTime += deltaSec;
 
+        // pulse変化が小さければDOM更新をスキップ（現状の0.01閾値を維持）
         if (Math.abs(prevPulseForDOM - pulse) > 0.01 || fadeAlpha < 1.0) {
             prevPulseForDOM = pulse;
-            bonjiBg.style.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
-            chakraRing.style.opacity = (0.2 + pulse * 0.4) * fadeAlpha;
-            chakraRing.style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
+            bonjiBg.style.opacity      = String((0.3 + pulse * 0.5) * fadeAlpha);
+            chakraRing.style.opacity   = String((0.2 + pulse * 0.4) * fadeAlpha);
+            chakraRing.style.transform = `translate(-50%, -50%) scale(${0.5 + pulse * 0.5})`;
         }
 
         material.uniforms.uTime.value    = shaderAccumulatedTime;
@@ -422,10 +474,53 @@
         material.uniforms.uOpacity.value = 0.6 * fadeAlpha;
 
         particleSystem.rotation.z += deltaSec * 0.05;
-
         renderer.render(scene, camera);
     }
 
+    // =============================================
+    // Page Visibility API（バックグラウンド節電）
+    // =============================================
+
+    // [修正②] suspend前にenv.triggerRelease()を呼ぶ
+    //   これでsuspend/resume時のクリックノイズを防ぐ
+    const forceSuspendAudio = () => {
+        stopLoop();
+        if (Tone.context.state === 'running') {
+            if (isTuning && !isStopping) {
+                env.triggerRelease(); // エンベロープを先に閉じる
+            }
+            Tone.context.suspend();
+        }
+    };
+
+    // [修正②] resume後にupdateAudioAndUI()で周波数を再同期
+    //   resumeはPromiseを返すので.then()で順序を保証する
+    const resumeAudioIfNeeded = () => {
+        if (isTuning && !isStopping) {
+            Tone.context.resume().then(() => {
+                // 再開時にエンベロープを再トリガー
+                env.triggerAttack();
+                updateAudioAndUI(); // 周波数・フィルターを再同期
+            });
+            lastTs             = performance.now();
+            lastRenderRealTime = performance.now();
+            startLoop();
+        }
+    };
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            forceSuspendAudio();
+        } else {
+            resumeAudioIfNeeded();
+        }
+    });
+
+    window.addEventListener('pagehide', forceSuspendAudio);
+
+    // =============================================
+    // チャクラボタン生成
+    // =============================================
     chakraData.forEach((chakra, index) => {
         const btn = document.createElement('button');
         btn.className = 'chakra-btn';
@@ -435,6 +530,9 @@
         chakraSelector.appendChild(btn);
     });
 
+    // =============================================
+    // イベントリスナー
+    // =============================================
     actionBtn.onclick = toggleTuning;
 
     btnVis.onclick = () => {
@@ -461,36 +559,14 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
     });
-    
-    const forceSuspendAudio = () => {
-        stopLoop(); 
-        if (Tone.context.state === 'running') {
-            Tone.context.suspend(); 
-        }
-    };
-
-    const resumeAudioIfNeeded = () => {
-        if (isTuning && !isStopping) {
-            Tone.context.resume(); 
-            lastTs = performance.now();
-            lastRenderRealTime = performance.now(); 
-            startLoop(); 
-        }
-    };
-
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-            forceSuspendAudio();
-        } else {
-            resumeAudioIfNeeded();
-        }
-    });
-
-    window.addEventListener('pagehide', forceSuspendAudio);
 
     document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
+    // =============================================
+    // 初期UI表示
+    // =============================================
     updateAudioAndUI();
 </script>
+
 </body>
 </html>
