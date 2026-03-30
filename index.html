@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +19,6 @@
     :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
     html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
     #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-    /* ▼ CSS変数ではなくopacity/transformを直接JSで制御するためwill-changeを適切に設定 */
     #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; }
     #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; }
     #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 5vh) + 3vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
@@ -29,7 +27,6 @@
     .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
     .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
     #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 40vh; }
-    #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; }
     .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; }
     .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); margin-bottom: 1vh; transition: color 0.5s; }
     .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; }
@@ -45,7 +42,6 @@
     .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
 </style>
-
 </head>
 <body>
     <div id="webgl-container"></div>
@@ -75,7 +71,6 @@
     </div>
 
 <script>
-    // --- 1. データ ---
     const chakraData = [
         { id: 1, kanji: "地", yomi: "ち", on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀", meaning: "土 / 基盤 / 生命 / 会陰" },
         { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪", meaning: "水 / 創造 / 感情 / 丹田" },
@@ -90,7 +85,6 @@
     const tuneNames = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
     const breathNames = ['呼吸: 8秒', '呼吸: 16秒'];
 
-    // --- 2. グローバル変数 ---
     let currentChakraIndex = 0;
     let isTuning = false;
     let isStopping = false;
@@ -98,19 +92,21 @@
     let visMode = 2;
     let tuningMode = 0;
     let breathMode = 0;
+    
+    // ▼ ループ制御用変数
     let rafId = null;
-    let renderer, scene, camera, particleSystem, material;
+    let timeoutId = null;
+    let lastTs = 0;
     let breathPhase = -Math.PI / 2;
 
-    // ▼ FPS制御：前フレームのtimestamp（RAF引数を直接使う）
-    const TARGET_INTERVAL_MS = 1000 / 30; // iPhoneは30fps固定
-    let lastFrameTime = 0;
+    // ▼ DOM更新のキャッシュ用変数（GC対策）
+    let prevBonjiOp = null;
+    let prevRingOp = null;
+    let prevRingTransform = null;
 
-    // デバイス判定
     const isIPhone = /iPhone/.test(navigator.userAgent);
     const isIPad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
 
-    // ▼ iPhoneはパーティクル数を大幅削減。pixelRatioは最大1.0に制限
     const CONFIG = isIPhone
         ? { fps: 30, particles: 200, pixelRatio: Math.min(window.devicePixelRatio * 0.5, 1.0) }
         : isIPad
@@ -119,7 +115,6 @@
 
     const TARGET_INTERVAL = 1000 / CONFIG.fps;
 
-    // DOM要素
     const bonjiBg       = document.getElementById('bonji-bg');
     const chakraRing    = document.getElementById('chakra-ring');
     const kanjiDisplay  = document.getElementById('kanji-display');
@@ -133,7 +128,8 @@
     const btnTune       = document.getElementById('btn-tune');
     const btnBreath     = document.getElementById('btn-breath');
 
-    // --- 3. 音響設定 ---
+    let renderer, scene, camera, particleSystem, material;
+
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
     const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
@@ -141,7 +137,6 @@
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
     osc.start();
 
-    // --- 4. Three.js ---
     function initThree() {
         if (renderer) return;
         const container = document.getElementById('webgl-container');
@@ -149,7 +144,6 @@
         camera   = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
 
-        // ▼ preserveDrawingBuffer:false（デフォルト）、antialias:falseでGPU負荷削減
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(CONFIG.pixelRatio);
@@ -163,7 +157,7 @@
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('aIndex',   new THREE.BufferAttribute(indices,    1));
 
-        // ▼ Shaderの計算を簡略化：sinを1回に減らし、モード分岐もフラット化
+        // ▼ Shaderの演算コスト削減（sin/cosを変数にキャッシュ）
         material = new THREE.ShaderMaterial({
             uniforms: {
                 uTime:     { value: 0.0 },
@@ -187,26 +181,24 @@
                     vec3 pos;
 
                     if (uVisMode < 0.5) {
-                        // 2Dサイマ：sin2回→sin1回＋cos1回に削減
                         float a = uChakraId * t + uTime * 0.5;
                         pos = vec3(sin(a) * S, cos(t * (uChakraId + 1.0)) * S, 0.0);
-
                     } else if (uVisMode < 1.5) {
-                        // 3Dトーラス：演算を最小化
                         float u = floor(aIndex * 20.0) * (PI2 / 20.0) + uTime * 0.2;
                         float v = fract(aIndex * 20.0) * PI2 + uTime * 0.3;
-                        float cv = cos(v);
+                        float cu = cos(u); float su = sin(u);
+                        float cv = cos(v); float sv = sin(v);
                         float R = S * 0.8, r = S * 0.4;
                         float rc = R + r * cv;
-                        pos = vec3(rc * cos(u), rc * sin(u), r * sin(v));
-
+                        pos = vec3(rc * cu, rc * su, r * sv);
                     } else {
-                        // 統合3D：ripple廃止、sin回数削減
                         float u = uChakraId * t * 4.0 + uTime * 0.1;
                         float v = (uChakraId + 2.0) * t * 4.0 + uTime * 0.2;
+                        float cu = cos(u); float su = sin(u);
+                        float cv = cos(v); float sv = sin(v);
                         float r = S * 0.5;
-                        float rc = S * 0.9 + r * cos(v);
-                        pos = vec3(rc * cos(u), rc * sin(u) * sin(v), r * sin(v));
+                        float rc = S * 0.9 + r * cv;
+                        pos = vec3(rc * cu, rc * su * sv, r * sv);
                     }
 
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -218,7 +210,6 @@
                 uniform vec3 uColor;
                 uniform float uOpacity;
                 void main() {
-                    // ▼ 円形クリップ：distanceではなくdot積で計算（軽量化）
                     vec2 d = gl_PointCoord - 0.5;
                     if (dot(d, d) > 0.25) discard;
                     gl_FragColor = vec4(uColor, uOpacity);
@@ -234,7 +225,6 @@
         scene.add(particleSystem);
     }
 
-    // float変換ヘルパー（uniform設定用）
     function float(v) { return parseFloat(v); }
 
     function disposeThree() {
@@ -248,7 +238,6 @@
         particleSystem = null;
     }
 
-    // --- 5. UI更新 ---
     function updateAudioAndUI() {
         const data = chakraData[currentChakraIndex];
         kanjiDisplay.innerText = data.kanji;
@@ -279,14 +268,12 @@
             btn.style.backgroundColor = i === currentChakraIndex ? data.strColor : 'rgba(255,255,255,0.1)';
         });
 
-        // ▼ box-shadowはbox-shadow変数ではなくstrColorで直接更新（transition済み）
         bonjiBg.style.textShadow  = `0 0 30px rgba(0,0,0,1), 0 0 40px ${data.strColor}`;
         chakraRing.style.boxShadow = `0 0 50px ${data.strColor}`;
 
         if (isTuning && !isStopping) osc.frequency.rampTo(targetFreqVal, 1.5);
     }
 
-    // --- 6. チューニング制御 ---
     async function toggleTuning() {
         if (isStopping) return;
 
@@ -300,8 +287,10 @@
             osc.volume.value = -6;
             updateAudioAndUI();
             env.triggerAttack();
-            breathPhase = -Math.PI / 2; // ▼ 呼吸フェーズをリセット
-            lastFrameTime = 0;
+            
+            breathPhase = -Math.PI / 2;
+            prevBonjiOp = null; prevRingOp = null; prevRingTransform = null;
+            lastTs = performance.now();
             startLoop();
 
         } else {
@@ -323,7 +312,6 @@
                     isStopping = false;
                     actionBtn.disabled = false;
                     actionBtn.innerText = "TUNING START";
-                    // ▼ CSS変数ではなくstyle直接書き込み（DOMの再計算を避ける）
                     bonjiBg.style.opacity    = '0.4';
                     chakraRing.style.opacity = '0.4';
                     chakraRing.style.transform = 'translate(-50%, -50%) scale(0.5)';
@@ -332,62 +320,76 @@
         }
     }
 
-    // --- 7. RAFループ ---
+    // ▼ rAF単体で回さず、setTimeoutで物理的にCPUを休ませる
     function startLoop() {
-        if (rafId) return;
-        function loop(ts) {
-            rafId = requestAnimationFrame(loop);
-            // ▼ RAFのtimestampを直接使ってFPS制限（performance.now()の呼び出し削減）
-            if (ts - lastFrameTime < TARGET_INTERVAL) return;
-            lastFrameTime = ts;
-            drawFrame(ts);
-        }
-        rafId = requestAnimationFrame(loop);
+        if (rafId || timeoutId) return;
+        lastTs = performance.now();
+        queueNextFrame();
+    }
+
+    function queueNextFrame() {
+        timeoutId = setTimeout(() => {
+            rafId = requestAnimationFrame((ts) => {
+                drawFrame(ts);
+                if (isTuning) queueNextFrame();
+            });
+        }, TARGET_INTERVAL - 5); // 5msのバッファを持たせて次のVSYNCに合わせる
     }
 
     function stopLoop() {
+        if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     }
 
-    // ▼ DOM書き込みをまとめる：bonjiBg/chakraRingはstyle.opacityとstyle.transformを直接変更
     function drawFrame(ts) {
         if (!renderer || !material) return;
 
+        // ▼ dtを使用して20分後も完璧に呼吸と同期させる（タブ落ち対策でmax 0.1秒に制限）
+        const delta = Math.min((ts - lastTs) * 0.001, 0.1);
+        lastTs = ts;
+
         const now = ts * 0.001;
 
-        // フェードアウト係数
         let fadeAlpha = 1.0;
         if (isStopping) {
             fadeAlpha = Math.max(0, 1.0 - (ts - stopStartTime) / 2500);
+            // ▼ フェードアウト完了時はレンダリングを完全スキップ
+            if (fadeAlpha <= 0) return;
         }
 
-        // ▼ breathPhaseの更新：dtを計算せず、固定時間ステップで近似（TARGET_INTERVALを使用）
-        const dtFixed = TARGET_INTERVAL * 0.001;
         const period  = breathMode === 0 ? 8 : 16;
-        breathPhase  += (Math.PI * 2 / period) * dtFixed;
+        breathPhase  += (Math.PI * 2 / period) * delta;
         const pulse   = (Math.sin(breathPhase) + 1) * 0.5;
 
-        // ▼ CSS変数setPropertyを廃止→style直接書き込み（毎フレームのスタイル再計算を回避）
-        const bonjiOpacity = (0.3 + pulse * 0.5) * fadeAlpha;
-        const ringScale    = 0.5 + pulse * 0.5;
-        const ringOpacity  = (0.2 + pulse * 0.4) * fadeAlpha;
+        // ▼ DOM操作のキャッシュチェック：値が変化した時だけ更新する
+        const bonjiOpStr = ((0.3 + pulse * 0.5) * fadeAlpha).toFixed(2);
+        if (prevBonjiOp !== bonjiOpStr) {
+            bonjiBg.style.opacity = bonjiOpStr;
+            prevBonjiOp = bonjiOpStr;
+        }
 
-        bonjiBg.style.opacity    = bonjiOpacity.toFixed(3);
-        chakraRing.style.opacity = ringOpacity.toFixed(3);
-        chakraRing.style.transform = `translate(-50%, -50%) scale(${ringScale.toFixed(3)})`;
+        const ringOpStr = ((0.2 + pulse * 0.4) * fadeAlpha).toFixed(2);
+        if (prevRingOp !== ringOpStr) {
+            chakraRing.style.opacity = ringOpStr;
+            prevRingOp = ringOpStr;
+        }
 
-        // Shader uniform更新
+        const scaleStr = (0.5 + pulse * 0.5).toFixed(2);
+        const transformStr = `translate(-50%, -50%) scale(${scaleStr})`;
+        if (prevRingTransform !== transformStr) {
+            chakraRing.style.transform = transformStr;
+            prevRingTransform = transformStr;
+        }
+
         material.uniforms.uTime.value    = now;
         material.uniforms.uPulse.value   = pulse;
         material.uniforms.uOpacity.value = (0.3 + pulse * 0.6) * fadeAlpha;
 
-        // ▼ 回転もGPU側へ移動せずCPU側のみ（重い行列演算なし）
         particleSystem.rotation.z = now * 0.05;
 
         renderer.render(scene, camera);
     }
 
-    // --- 8. イベント設定 ---
     chakraData.forEach((chakra, index) => {
         const btn = document.createElement('button');
         btn.className = 'chakra-btn';
@@ -424,7 +426,6 @@
         }
     });
 
-    // ▼ Page Visibility API：バックグラウンド時はRAFとAudioを完全停止
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
             if (isTuning) {
@@ -434,7 +435,7 @@
         } else {
             if (isTuning && !isStopping) {
                 Tone.context.resume();
-                lastFrameTime = 0; // ▼ 復帰時にフレームタイムをリセット（大きなdtジャンプを防ぐ）
+                lastTs = performance.now();
                 startLoop();
             }
         }
@@ -443,13 +444,6 @@
     document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
     updateAudioAndUI();
-
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('PWA Ready'))
-            .catch((err) => console.log('SW Error:', err));
-    }
 </script>
-
 </body>
 </html>
