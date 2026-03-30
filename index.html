@@ -93,27 +93,27 @@
     let tuningMode = 0;
     let breathMode = 0;
     
-    // ▼ ループ制御用変数
+    // ▼ ループ制御用変数（完全に一新）
     let rafId = null;
-    let timeoutId = null;
     let lastTs = 0;
+    let accumulatedTime = 0;
     let breathPhase = -Math.PI / 2;
+    
+    // ▼ DOM更新間引き用のキャッシュ（数値で保持）
+    let prevPulseForDOM = -1;
 
-    // ▼ DOM更新のキャッシュ用変数（GC対策）
-    let prevBonjiOp = null;
-    let prevRingOp = null;
-    let prevRingTransform = null;
+    // ▼ FPSを24に下げてバッテリー消費を劇的に改善
+    const TARGET_FPS = 24;
+    const TARGET_INTERVAL = 1000 / TARGET_FPS;
 
     const isIPhone = /iPhone/.test(navigator.userAgent);
     const isIPad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
 
     const CONFIG = isIPhone
-        ? { fps: 30, particles: 200, pixelRatio: Math.min(window.devicePixelRatio * 0.5, 1.0) }
+        ? { particles: 200, pixelRatio: Math.min(window.devicePixelRatio * 0.5, 1.0) }
         : isIPad
-        ? { fps: 30, particles: 350, pixelRatio: Math.min(window.devicePixelRatio * 0.6, 1.0) }
-        : { fps: 60, particles: 600, pixelRatio: Math.min(window.devicePixelRatio, 1.0) };
-
-    const TARGET_INTERVAL = 1000 / CONFIG.fps;
+        ? { particles: 350, pixelRatio: Math.min(window.devicePixelRatio * 0.6, 1.0) }
+        : { particles: 600, pixelRatio: Math.min(window.devicePixelRatio, 1.0) };
 
     const bonjiBg       = document.getElementById('bonji-bg');
     const chakraRing    = document.getElementById('chakra-ring');
@@ -157,7 +157,6 @@
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('aIndex',   new THREE.BufferAttribute(indices,    1));
 
-        // ▼ Shaderの演算コスト削減（sin/cosを変数にキャッシュ）
         material = new THREE.ShaderMaterial({
             uniforms: {
                 uTime:     { value: 0.0 },
@@ -289,7 +288,8 @@
             env.triggerAttack();
             
             breathPhase = -Math.PI / 2;
-            prevBonjiOp = null; prevRingOp = null; prevRingTransform = null;
+            accumulatedTime = 0;
+            prevPulseForDOM = -1;
             lastTs = performance.now();
             startLoop();
 
@@ -312,80 +312,70 @@
                     isStopping = false;
                     actionBtn.disabled = false;
                     actionBtn.innerText = "TUNING START";
-                    bonjiBg.style.opacity    = '0.4';
-                    chakraRing.style.opacity = '0.4';
-                    chakraRing.style.transform = 'translate(-50%, -50%) scale(0.5)';
+                    bonjiBg.style.opacity    = 0.4;
+                    chakraRing.style.opacity = 0.4;
+                    chakraRing.style.transform = "translate(-50%, -50%) scale(0.5)";
                 }
             }, 3500);
         }
     }
 
-    // ▼ rAF単体で回さず、setTimeoutで物理的にCPUを休ませる
+    // ▼ クリーンなRAFループ。規定FPSになるまで描画を完全にスキップする
     function startLoop() {
-        if (rafId || timeoutId) return;
+        if (rafId) return;
         lastTs = performance.now();
-        queueNextFrame();
+        rafId = requestAnimationFrame(loop);
     }
 
-    function queueNextFrame() {
-        timeoutId = setTimeout(() => {
-            rafId = requestAnimationFrame((ts) => {
-                drawFrame(ts);
-                if (isTuning) queueNextFrame();
-            });
-        }, TARGET_INTERVAL - 5); // 5msのバッファを持たせて次のVSYNCに合わせる
+    function loop(ts) {
+        if (!isTuning) return;
+        rafId = requestAnimationFrame(loop);
+        
+        const dt = ts - lastTs;
+        // ターゲット時間に達していなければ何もしない（GPUもCPUも休む）
+        if (dt < TARGET_INTERVAL) return;
+
+        // dtが大きすぎる（タブ切り替えなどで溜まった）場合は上限0.1秒とする
+        const deltaSec = Math.min(dt * 0.001, 0.1);
+        // 次回の計算がずれないように余剰時間を考慮してlastTsを更新
+        lastTs = ts - (dt % TARGET_INTERVAL);
+        
+        drawFrame(deltaSec);
     }
 
     function stopLoop() {
-        if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     }
 
-    function drawFrame(ts) {
+    function drawFrame(deltaSec) {
         if (!renderer || !material) return;
 
-        // ▼ dtを使用して20分後も完璧に呼吸と同期させる（タブ落ち対策でmax 0.1秒に制限）
-        const delta = Math.min((ts - lastTs) * 0.001, 0.1);
-        lastTs = ts;
-
-        const now = ts * 0.001;
-
+        accumulatedTime += deltaSec;
         let fadeAlpha = 1.0;
+        
         if (isStopping) {
-            fadeAlpha = Math.max(0, 1.0 - (ts - stopStartTime) / 2500);
-            // ▼ フェードアウト完了時はレンダリングを完全スキップ
+            fadeAlpha = Math.max(0, 1.0 - (performance.now() - stopStartTime) / 2500);
             if (fadeAlpha <= 0) return;
         }
 
         const period  = breathMode === 0 ? 8 : 16;
-        breathPhase  += (Math.PI * 2 / period) * delta;
+        breathPhase  += (Math.PI * 2 / period) * deltaSec;
         const pulse   = (Math.sin(breathPhase) + 1) * 0.5;
 
-        // ▼ DOM操作のキャッシュチェック：値が変化した時だけ更新する
-        const bonjiOpStr = ((0.3 + pulse * 0.5) * fadeAlpha).toFixed(2);
-        if (prevBonjiOp !== bonjiOpStr) {
-            bonjiBg.style.opacity = bonjiOpStr;
-            prevBonjiOp = bonjiOpStr;
+        // ▼ 変化量が0.01以上の時か、フェードアウト中のみDOMを更新（文字列生成とレイアウト計算を激減）
+        if (Math.abs(prevPulseForDOM - pulse) > 0.01 || fadeAlpha < 1.0) {
+            prevPulseForDOM = pulse;
+            // 変数の中身は数値のまま渡し、内部での不要なStringオブジェクト生成を防ぐ
+            bonjiBg.style.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
+            chakraRing.style.opacity = (0.2 + pulse * 0.4) * fadeAlpha;
+            chakraRing.style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
         }
 
-        const ringOpStr = ((0.2 + pulse * 0.4) * fadeAlpha).toFixed(2);
-        if (prevRingOp !== ringOpStr) {
-            chakraRing.style.opacity = ringOpStr;
-            prevRingOp = ringOpStr;
-        }
-
-        const scaleStr = (0.5 + pulse * 0.5).toFixed(2);
-        const transformStr = `translate(-50%, -50%) scale(${scaleStr})`;
-        if (prevRingTransform !== transformStr) {
-            chakraRing.style.transform = transformStr;
-            prevRingTransform = transformStr;
-        }
-
-        material.uniforms.uTime.value    = now;
+        material.uniforms.uTime.value    = accumulatedTime;
         material.uniforms.uPulse.value   = pulse;
         material.uniforms.uOpacity.value = (0.3 + pulse * 0.6) * fadeAlpha;
 
-        particleSystem.rotation.z = now * 0.05;
+        particleSystem.rotation.z += deltaSec * 0.05;
 
         renderer.render(scene, camera);
     }
