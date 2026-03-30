@@ -436,27 +436,43 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
     });
+    
+    // バックグラウンド・アプリ終了時に完全に音を殺す強力な対策
+    const forceSuspendAudio = () => {
+        stopLoop(); // 描画ループを停止
+        if (Tone.context.state === 'running') {
+            Tone.context.suspend(); // 音声エンジンを強制サスペンド
+        }
+    };
 
+    const resumeAudioIfNeeded = () => {
+        if (isTuning && !isStopping) {
+            Tone.context.resume(); // 音声エンジンを復帰
+            lastTs = performance.now();
+            lastRenderRealTime = performance.now(); 
+            startLoop(); // 描画再開
+        }
+    };
+
+    // 通常のタブ切り替えやホーム画面移行
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
-            if (isTuning) {
-                stopLoop();
-                Tone.context.suspend();
-            }
+            forceSuspendAudio();
         } else {
-            if (isTuning && !isStopping) {
-                Tone.context.resume();
-                lastTs = performance.now();
-                lastRenderRealTime = performance.now(); 
-                startLoop();
-            }
+            resumeAudioIfNeeded();
         }
     });
 
+    // iOS特有の「タスクキル（スワイプして終了）」「別アプリへの遷移」を確実に検知
+    window.addEventListener('pagehide', forceSuspendAudio);
+
+    // スクロール時の余計な動作防止
     document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
+    // 初回UI更新
     updateAudioAndUI();
 </script>
-
 </body>
 </html>
+
+   
