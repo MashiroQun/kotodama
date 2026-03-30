@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（最適化版）</title>
+    <title>言霊チューナー（完全版）</title>
 
 <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
 <link rel="icon" href="icon2.png?v=2">
@@ -26,11 +26,14 @@
     header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
     .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
     .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
-    #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 40vh; }
-    .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; margin-bottom: -2vh; }
-    .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); margin-bottom: 1vh; transition: color 0.5s; }
-    .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; }
-    .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; margin-top: 1vh; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; }
+    
+    /* ▼ 中央のUIサイズを固定化してガタつきを防止 */
+    #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 45vh; }
+    .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1vh; }
+    .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1vh; line-height: 1; }
+    .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
+    .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
+    
     #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; margin-bottom: 0; width: 100%; max-width: 400px; }
     #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 2vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
     #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 2vh; }
@@ -93,27 +96,27 @@
     let tuningMode = 0;
     let breathMode = 0;
     
-    // ▼ ループ制御用変数（完全に一新）
     let rafId = null;
     let lastTs = 0;
-    let accumulatedTime = 0;
-    let breathPhase = -Math.PI / 2;
-    
-    // ▼ DOM更新間引き用のキャッシュ（数値で保持）
     let prevPulseForDOM = -1;
 
-    // ▼ FPSを24に下げてバッテリー消費を劇的に改善
+    // ▼ 絶対時間で管理するための変数
+    let tuneStartTime = 0;
+    let shaderAccumulatedTime = 0;
+    let lastRenderRealTime = 0;
+
     const TARGET_FPS = 24;
     const TARGET_INTERVAL = 1000 / TARGET_FPS;
 
     const isIPhone = /iPhone/.test(navigator.userAgent);
     const isIPad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
 
+    // ▼ pixelRatioを0.5に固定し、究極のエコモードへ
     const CONFIG = isIPhone
-        ? { particles: 200, pixelRatio: Math.min(window.devicePixelRatio * 0.5, 1.0) }
+        ? { particles: 250, pixelRatio: 0.5 }
         : isIPad
-        ? { particles: 350, pixelRatio: Math.min(window.devicePixelRatio * 0.6, 1.0) }
-        : { particles: 600, pixelRatio: Math.min(window.devicePixelRatio, 1.0) };
+        ? { particles: 350, pixelRatio: 0.5 }
+        : { particles: 600, pixelRatio: 0.5 };
 
     const bonjiBg       = document.getElementById('bonji-bg');
     const chakraRing    = document.getElementById('chakra-ring');
@@ -157,6 +160,7 @@
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('aIndex',   new THREE.BufferAttribute(indices,    1));
 
+        // ▼ 二重パーティクル（レイヤー分け）をShader内で実現
         material = new THREE.ShaderMaterial({
             uniforms: {
                 uTime:     { value: 0.0 },
@@ -175,23 +179,31 @@
                 const float PI2 = 6.2831853;
 
                 void main() {
-                    float t = aIndex * PI2;
-                    float S = 150.0 + uPulse * 40.0;
+                    // aIndexの半分を内側、もう半分を外側に判定
+                    float isOuter = step(0.5, aIndex);
+                    // 回転方向を逆に（1.0 または -1.0）
+                    float dir = isOuter == 1.0 ? -1.0 : 1.0;
+                    // 半径のサイズ倍率（内側は0.75倍、外側は1.25倍）
+                    float scaleMul = isOuter == 1.0 ? 1.25 : 0.75;
+
+                    // 0〜0.5の値を0〜1のフルサークルに戻して計算
+                    float t = fract(aIndex * 2.0) * PI2;
+                    float S = (150.0 + uPulse * 40.0) * scaleMul;
                     vec3 pos;
 
                     if (uVisMode < 0.5) {
-                        float a = uChakraId * t + uTime * 0.5;
+                        float a = uChakraId * t + uTime * 0.5 * dir;
                         pos = vec3(sin(a) * S, cos(t * (uChakraId + 1.0)) * S, 0.0);
                     } else if (uVisMode < 1.5) {
-                        float u = floor(aIndex * 20.0) * (PI2 / 20.0) + uTime * 0.2;
-                        float v = fract(aIndex * 20.0) * PI2 + uTime * 0.3;
+                        float u = floor(fract(aIndex * 2.0) * 20.0) * (PI2 / 20.0) + uTime * 0.2 * dir;
+                        float v = fract(aIndex * 40.0) * PI2 + uTime * 0.3;
                         float cu = cos(u); float su = sin(u);
                         float cv = cos(v); float sv = sin(v);
                         float R = S * 0.8, r = S * 0.4;
                         float rc = R + r * cv;
                         pos = vec3(rc * cu, rc * su, r * sv);
                     } else {
-                        float u = uChakraId * t * 4.0 + uTime * 0.1;
+                        float u = uChakraId * t * 4.0 + uTime * 0.1 * dir;
                         float v = (uChakraId + 2.0) * t * 4.0 + uTime * 0.2;
                         float cu = cos(u); float su = sin(u);
                         float cv = cos(v); float sv = sin(v);
@@ -201,7 +213,8 @@
                     }
 
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-                    gl_PointSize = 2.5 + uPulse * 2.5;
+                    // 外側の粒を少し小さく、内側を少し大きくして遠近感を出す
+                    gl_PointSize = (2.5 + uPulse * 2.5) * (isOuter == 1.0 ? 0.7 : 1.3);
                 }
             `,
             fragmentShader: `
@@ -287,10 +300,15 @@
             updateAudioAndUI();
             env.triggerAttack();
             
-            breathPhase = -Math.PI / 2;
-            accumulatedTime = 0;
             prevPulseForDOM = -1;
-            lastTs = performance.now();
+            
+            // ▼ 時間のリセットと保持
+            const now = performance.now();
+            tuneStartTime = now;
+            lastRenderRealTime = now;
+            shaderAccumulatedTime = 0;
+            lastTs = now;
+            
             startLoop();
 
         } else {
@@ -320,7 +338,6 @@
         }
     }
 
-    // ▼ クリーンなRAFループ。規定FPSになるまで描画を完全にスキップする
     function startLoop() {
         if (rafId) return;
         lastTs = performance.now();
@@ -332,46 +349,47 @@
         rafId = requestAnimationFrame(loop);
         
         const dt = ts - lastTs;
-        // ターゲット時間に達していなければ何もしない（GPUもCPUも休む）
         if (dt < TARGET_INTERVAL) return;
 
-        // dtが大きすぎる（タブ切り替えなどで溜まった）場合は上限0.1秒とする
-        const deltaSec = Math.min(dt * 0.001, 0.1);
-        // 次回の計算がずれないように余剰時間を考慮してlastTsを更新
-        lastTs = ts - (dt % TARGET_INTERVAL);
-        
-        drawFrame(deltaSec);
+        lastTs = ts - (dt % TARGET_INTERVAL); 
+        drawFrame(ts);
     }
 
     function stopLoop() {
         if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     }
 
-    function drawFrame(deltaSec) {
+    function drawFrame(ts) {
         if (!renderer || !material) return;
 
-        accumulatedTime += deltaSec;
+        const currentNow = performance.now();
         let fadeAlpha = 1.0;
         
         if (isStopping) {
-            fadeAlpha = Math.max(0, 1.0 - (performance.now() - stopStartTime) / 2500);
+            fadeAlpha = Math.max(0, 1.0 - (currentNow - stopStartTime) / 2500);
             if (fadeAlpha <= 0) return;
         }
 
+        // ▼ 1. 呼吸の絶対時間化（何秒経過したかで確実にフェーズを計算する）
+        const elapsedSec = (currentNow - tuneStartTime) * 0.001;
         const period  = breathMode === 0 ? 8 : 16;
-        breathPhase  += (Math.PI * 2 / period) * deltaSec;
-        const pulse   = (Math.sin(breathPhase) + 1) * 0.5;
+        // -PI/2からスタートさせることで、Pulseが完全に0から始まる
+        const currentPhase  = -Math.PI / 2 + (Math.PI * 2 / period) * elapsedSec;
+        const pulse   = (Math.sin(currentPhase) + 1) * 0.5;
 
-        // ▼ 変化量が0.01以上の時か、フェードアウト中のみDOMを更新（文字列生成とレイアウト計算を激減）
+        // ▼ 2. Shader用の連続回転時間（停止・再開時も滑らかに繋ぐ）
+        const deltaSec = Math.min((currentNow - lastRenderRealTime) * 0.001, 0.1);
+        lastRenderRealTime = currentNow;
+        shaderAccumulatedTime += deltaSec;
+
         if (Math.abs(prevPulseForDOM - pulse) > 0.01 || fadeAlpha < 1.0) {
             prevPulseForDOM = pulse;
-            // 変数の中身は数値のまま渡し、内部での不要なStringオブジェクト生成を防ぐ
             bonjiBg.style.opacity = (0.3 + pulse * 0.5) * fadeAlpha;
             chakraRing.style.opacity = (0.2 + pulse * 0.4) * fadeAlpha;
             chakraRing.style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
         }
 
-        material.uniforms.uTime.value    = accumulatedTime;
+        material.uniforms.uTime.value    = shaderAccumulatedTime;
         material.uniforms.uPulse.value   = pulse;
         material.uniforms.uOpacity.value = (0.3 + pulse * 0.6) * fadeAlpha;
 
@@ -426,6 +444,7 @@
             if (isTuning && !isStopping) {
                 Tone.context.resume();
                 lastTs = performance.now();
+                lastRenderRealTime = performance.now(); // 復帰時に時間を再セット
                 startLoop();
             }
         }
