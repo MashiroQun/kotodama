@@ -107,7 +107,6 @@
     const isIPhone = /iPhone/.test(navigator.userAgent);
     const isIPad = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
 
-    // ▼ さらなる省電力化のため、解像度を0.3に低下（見た目の柔らかさは維持）
     const CONFIG = isIPhone
         ? { particles: 200, pixelRatio: 0.4 }
         : isIPad
@@ -129,7 +128,6 @@
 
     let renderer, scene, camera, particleSystem, material;
 
-    // ノイズ対策：念のためさらに先読みバッファを増やして安定させる
     Tone.context.lookAhead = 0.2; 
 
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
@@ -137,7 +135,8 @@
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
-    osc.start();
+    
+    // ※ ここにあった osc.start(); は削除し、toggleTuning内に移動しました。
 
     function initThree() {
         if (renderer) return;
@@ -232,15 +231,30 @@
 
     function float(v) { return parseFloat(v); }
 
+    // メモリリークを防止するためのより丁寧な破棄処理
     function disposeThree() {
         if (!renderer) return;
-        particleSystem.geometry.dispose();
-        particleSystem.material.dispose();
+        
+        stopLoop();
+
+        if (particleSystem) {
+            scene.remove(particleSystem);
+            particleSystem.geometry.dispose();
+            particleSystem.material.dispose();
+        }
+        
         renderer.dispose();
-        document.getElementById('webgl-container').innerHTML = "";
+        
+        const container = document.getElementById('webgl-container');
+        if (container && container.contains(renderer.domElement)) {
+            container.removeChild(renderer.domElement);
+        }
+        
         renderer = null;
         material = null;
         particleSystem = null;
+        scene = null;
+        camera = null;
     }
 
     function updateAudioAndUI() {
@@ -289,6 +303,12 @@
             reverb.wet.value = 0.4;
             delay.wet.value  = 0.15;
             initThree();
+            
+            // チューニング開始時にオシレーターが動いていなければ起動
+            if (osc.state !== "started") {
+                osc.start();
+            }
+
             osc.volume.value = -6;
             updateAudioAndUI();
             env.triggerAttack();
@@ -336,6 +356,14 @@
         rafId = requestAnimationFrame(loop);
     }
 
+    // エラー防止のためのループ停止関数
+    function stopLoop() {
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+    }
+
     function loop(ts) {
         if (!isTuning) return;
         rafId = requestAnimationFrame(loop);
@@ -347,7 +375,7 @@
         drawFrame(ts);
     }
 
-        function drawFrame(ts) {
+    function drawFrame(ts) {
         if (!renderer || !material) return;
 
         const currentNow = performance.now();
@@ -391,15 +419,12 @@
 
         material.uniforms.uTime.value    = shaderAccumulatedTime;
         material.uniforms.uPulse.value   = pulse;
-        
-        // ▼ ここを変更！呼吸(pulse)による明るさ変更をやめ、常に0.6の明るさ(×フェードアウト係数)に固定
         material.uniforms.uOpacity.value = 0.6 * fadeAlpha;
 
         particleSystem.rotation.z += deltaSec * 0.05;
 
         renderer.render(scene, camera);
     }
-
 
     chakraData.forEach((chakra, index) => {
         const btn = document.createElement('button');
@@ -437,24 +462,22 @@
         }
     });
     
-    // バックグラウンド・アプリ終了時に完全に音を殺す強力な対策
     const forceSuspendAudio = () => {
-        stopLoop(); // 描画ループを停止
+        stopLoop(); 
         if (Tone.context.state === 'running') {
-            Tone.context.suspend(); // 音声エンジンを強制サスペンド
+            Tone.context.suspend(); 
         }
     };
 
     const resumeAudioIfNeeded = () => {
         if (isTuning && !isStopping) {
-            Tone.context.resume(); // 音声エンジンを復帰
+            Tone.context.resume(); 
             lastTs = performance.now();
             lastRenderRealTime = performance.now(); 
-            startLoop(); // 描画再開
+            startLoop(); 
         }
     };
 
-    // 通常のタブ切り替えやホーム画面移行
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
             forceSuspendAudio();
@@ -463,16 +486,11 @@
         }
     });
 
-    // iOS特有の「タスクキル（スワイプして終了）」「別アプリへの遷移」を確実に検知
     window.addEventListener('pagehide', forceSuspendAudio);
 
-    // スクロール時の余計な動作防止
     document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
-    // 初回UI更新
     updateAudioAndUI();
 </script>
 </body>
 </html>
-
-   
