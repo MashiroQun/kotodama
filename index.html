@@ -16,7 +16,6 @@
 <link rel="manifest" href="manifest.json">
 
 <script>
-  // A. ストレージ永続化の要求（iOSパージ対策）
   async function requestPersistentStorage() {
     if (navigator.storage && navigator.storage.persist) {
       const isPersisted = await navigator.storage.persist();
@@ -25,7 +24,6 @@
   }
   requestPersistentStorage();
 
-  // B. Service Workerの手動更新ロジック
   let newWorker;
   let isUpdating = false;
 
@@ -38,7 +36,6 @@
           newWorker = reg.installing;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // 更新がある場合は「適用ボタン」を表示
               document.getElementById('btn-check-update').style.display = 'none';
               document.getElementById('update-button').style.display = 'block';
             }
@@ -55,7 +52,6 @@
     });
   }
 
-  // C. 手動アップデート確認
   function checkForUpdate() {
     if ('serviceWorker' in navigator) {
       showToast("更新を確認しています...");
@@ -94,25 +90,29 @@
     #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
     #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; }
     #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; }
-    #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 5vh) + 3vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+    /* 下部の余白（padding-bottom）を少し減らしました */
+    #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
     #ui-layer > * { pointer-events: auto; }
     header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
     .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
     .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
-    #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 45vh; }
+    /* 中央エリアの最小高さを減らし、パネルの圧迫を回避します */
+    #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 30vh; }
     .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1vh; }
     .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1vh; line-height: 1; }
     .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
     .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
     #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; margin-bottom: 0; width: 100%; max-width: 400px; }
-    #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 2vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
-    #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 2vh; }
+    /* パネル内のマージンを 2vh から 1.5vh に圧縮 */
+    #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
+    #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5vh; }
     .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
     .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
-    #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 2vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 2vh; touch-action: manipulation; }
+    /* ボタンの上下余白とpaddingを少し圧縮 */
+    #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 1.5vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 1.5vh; touch-action: manipulation; }
     #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
     #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-    .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
+    .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
 
     /* トースト通知用 */
@@ -151,7 +151,7 @@
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
-            <div style="display: flex; justify-content: center; width: 100%; margin-top: 2vh;">
+            <div style="display: flex; justify-content: center; width: 100%; margin-top: 1.5vh;">
                 <button id="btn-check-update" class="toggle-btn" style="flex: 1; border-color: rgba(255,255,255,0.1); opacity: 0.7;" onclick="checkForUpdate()">UPDATE CHECK</button>
                 <button id="update-button" class="toggle-btn" style="flex: 1; display: none; background: rgba(255,255,255,0.2); border-color: #FFF; font-weight: bold;" onclick="executeAppUpdate()">APPLY UPDATE</button>
             </div>
@@ -159,9 +159,6 @@
     </div>
 
 <script>
-    // =============================================
-    // データ定義
-    // =============================================
     const chakraData = [
         { id: 1, kanji: "地", yomi: "ち",     on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
         { id: 2, kanji: "海", yomi: "うみ",   on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
@@ -177,9 +174,6 @@
     const tuneNames  = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
     const breathNames= ['呼吸: 8秒', '呼吸: 16秒'];
 
-    // =============================================
-    // 状態変数
-    // =============================================
     let currentChakraIndex = 0;
     let isTuning    = false;
     let isStopping  = false;
@@ -201,7 +195,6 @@
     const TARGET_FPS      = 20;
     const TARGET_INTERVAL = 1000 / TARGET_FPS;
 
-    // デバイス判定
     const isIPhone = /iPhone/.test(navigator.userAgent);
     const isIPad   = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
 
@@ -211,7 +204,6 @@
         ? { particles: 330, pixelRatio: 0.5 }
         : { particles: 500, pixelRatio: 0.5 };
 
-    // DOM参照
     const bonjiBg        = document.getElementById('bonji-bg');
     const chakraRing     = document.getElementById('chakra-ring');
     const kanjiDisplay   = document.getElementById('kanji-display');
@@ -225,19 +217,16 @@
     const btnTune        = document.getElementById('btn-tune');
     const btnBreath      = document.getElementById('btn-breath');
 
-    // Three.js オブジェクト
     let renderer, scene, camera, particleSystem, material;
 
     Tone.context.lookAhead = 0.35;
 
-    // オーディオチェーン構築
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
     const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
 
-    // Three.js 初期化
     function initThree() {
         if (renderer) return;
         const container = document.getElementById('webgl-container');
