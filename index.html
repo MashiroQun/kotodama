@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -15,6 +14,79 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <link rel="manifest" href="manifest.json">
+
+<script>
+  // A. ストレージ永続化の要求（iOSパージ対策）
+  async function requestPersistentStorage() {
+    if (navigator.storage && navigator.storage.persist) {
+      const isPersisted = await navigator.storage.persist();
+      console.log(`ストレージ永続化: ${isPersisted ? '許可' : '未許可'}`);
+    }
+  }
+  requestPersistentStorage();
+
+  // B. Service Workerの手動更新ロジック
+  let newWorker;
+  let isUpdating = false;
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        console.log('SW registered.');
+        
+        reg.addEventListener('updatefound', () => {
+          newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // 更新がある場合は「適用ボタン」を表示
+              document.getElementById('btn-check-update').style.display = 'none';
+              document.getElementById('update-button').style.display = 'block';
+            }
+          });
+        });
+      }).catch(err => console.log('SW registration failed:', err));
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!isUpdating) {
+          isUpdating = true;
+          window.location.reload();
+        }
+      });
+    });
+  }
+
+  // C. 手動アップデート確認
+  function checkForUpdate() {
+    if ('serviceWorker' in navigator) {
+      showToast("更新を確認しています...");
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) {
+          reg.update().then(() => {
+            if (!reg.installing) showToast("現在のバージョンが最新です");
+            else showToast("更新が見つかりました");
+          }).catch(err => {
+            showToast("通信エラー（オフライン状態です）");
+          });
+        }
+      });
+    }
+  }
+
+  function executeAppUpdate() {
+    if (newWorker) newWorker.postMessage({ type: 'SKIP_WAITING' });
+  }
+
+  function showToast(msg) {
+      const t = document.getElementById('toast-msg');
+      t.innerText = msg;
+      t.style.transform = 'translateX(-50%) translateY(0)';
+      t.style.opacity = '1';
+      setTimeout(() => {
+          t.style.transform = 'translateX(-50%) translateY(-100px)';
+          t.style.opacity = '0';
+      }, 2500);
+  }
+</script>
 
 <style>
     :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
@@ -42,10 +114,20 @@
     #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
     .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.5vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
+
+    /* トースト通知用 */
+    #toast-msg {
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+        background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px;
+        border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif;
+        font-size: 13px; z-index: 9999; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        opacity: 0; pointer-events: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
 </style>
 
 </head>
 <body>
+    <div id="toast-msg">メッセージ</div>
     <div id="webgl-container"></div>
     <div id="bonji-bg">𑖀</div>
     <div id="ui-layer">
@@ -68,6 +150,10 @@
                 <button id="btn-vis" class="toggle-btn">VIS: 統合3D</button>
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
+            </div>
+            <div style="display: flex; justify-content: center; width: 100%; margin-top: 2vh;">
+                <button id="btn-check-update" class="toggle-btn" style="flex: 1; border-color: rgba(255,255,255,0.1); opacity: 0.7;" onclick="checkForUpdate()">UPDATE CHECK</button>
+                <button id="update-button" class="toggle-btn" style="flex: 1; display: none; background: rgba(255,255,255,0.2); border-color: #FFF; font-weight: bold;" onclick="executeAppUpdate()">APPLY UPDATE</button>
             </div>
         </div>
     </div>
@@ -110,15 +196,8 @@
     let shaderAccumulatedTime= 0;
     let lastRenderRealTime   = 0;
 
-    // =============================================
-    // [修正①] float()をファイル先頭で定義（initThreeより前）
-    // =============================================
     function float(v) { return parseFloat(v); }
 
-    // =============================================
-    // [省電力] TARGET_FPSを24→20に下げる
-    //   体感差はほぼなく、描画負荷が約17%減
-    // =============================================
     const TARGET_FPS      = 20;
     const TARGET_INTERVAL = 1000 / TARGET_FPS;
 
@@ -149,25 +228,16 @@
     // Three.js オブジェクト
     let renderer, scene, camera, particleSystem, material;
 
-    // =============================================
-    // [修正②ノイズ対策] lookAheadを0.2→0.35に上げる
-    //   バッファが小さすぎるとiOSではグリッチが起きやすい
-    // =============================================
     Tone.context.lookAhead = 0.35;
 
-    // =============================================
     // オーディオチェーン構築
-    // =============================================
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
     const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
-    // ※ osc.start()はここでは呼ばない。toggleTuning内で制御する。
 
-    // =============================================
     // Three.js 初期化
-    // =============================================
     function initThree() {
         if (renderer) return;
         const container = document.getElementById('webgl-container');
@@ -188,7 +258,6 @@
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('aIndex',   new THREE.BufferAttribute(indices,    1));
 
-        // [省電力] vertexShaderにprecision mediump floatを明示
         material = new THREE.ShaderMaterial({
             uniforms: {
                 uTime:     { value: 0.0 },
@@ -261,9 +330,6 @@
         scene.add(particleSystem);
     }
 
-    // =============================================
-    // Three.js 破棄（メモリリーク防止）
-    // =============================================
     function disposeThree() {
         if (!renderer) return;
         stopLoop();
@@ -281,9 +347,6 @@
         renderer = null; material = null; particleSystem = null; scene = null; camera = null;
     }
 
-    // =============================================
-    // UI・オーディオ同期
-    // =============================================
     function updateAudioAndUI() {
         const data = chakraData[currentChakraIndex];
         kanjiDisplay.innerText   = data.kanji;
@@ -317,22 +380,16 @@
         bonjiBg.style.textShadow   = `0 0 30px rgba(0,0,0,1), 0 0 40px ${data.strColor}`;
         chakraRing.style.boxShadow = `0 0 50px ${data.strColor}`;
 
-        // [修正②ノイズ対策] チューニング中は周波数とフィルターを同時に再同期
         if (isTuning && !isStopping) {
             osc.frequency.rampTo(targetFreqVal, 1.5);
-            // [修正③ノイズ対策] フィルターカットオフを基音の6倍音に動的追従
             filter.frequency.rampTo(targetFreqVal * 6, 0.5);
         }
     }
 
-    // =============================================
-    // チューニング開始／停止
-    // =============================================
     async function toggleTuning() {
         if (isStopping) return;
 
         if (!isTuning) {
-            // --- 開始 ---
             isTuning = true;
             actionBtn.innerText = "TUNING STOP";
 
@@ -342,7 +399,6 @@
 
             initThree();
 
-            // [修正①] osc.state確認後に起動
             if (osc.state !== "started") {
                 osc.start();
             }
@@ -362,7 +418,6 @@
             startLoop();
 
         } else {
-            // --- 停止 ---
             isStopping = true;
             actionBtn.disabled  = true;
             actionBtn.innerText = "RESETTING...";
@@ -370,8 +425,6 @@
 
             env.triggerRelease();
 
-            // [修正③] volumeを-Infinityに下げた後にosc.stop()を呼ぶ
-            //   こうすることで次回のisTuning開始チェックが正しく機能する
             setTimeout(() => {
                 osc.volume.rampTo(-Infinity, 1.0);
                 setTimeout(() => {
@@ -398,9 +451,6 @@
         }
     }
 
-    // =============================================
-    // アニメーションループ
-    // =============================================
     function startLoop() {
         if (rafId) return;
         lastTs = performance.now();
@@ -414,13 +464,12 @@
         }
     }
 
-    // [省電力] isTuningを先頭でチェックし、falseなら即終了
     function loop(ts) {
         if (!isTuning) { rafId = null; return; }
         rafId = requestAnimationFrame(loop);
 
         const dt = ts - lastTs;
-        if (dt < TARGET_INTERVAL - 1) return; // 早期リターンで不要な描画を省く
+        if (dt < TARGET_INTERVAL - 1) return;
 
         lastTs = ts - (dt % TARGET_INTERVAL);
         drawFrame(ts);
@@ -461,7 +510,6 @@
         lastRenderRealTime     = currentNow;
         shaderAccumulatedTime += deltaSec;
 
-        // pulse変化が小さければDOM更新をスキップ（現状の0.01閾値を維持）
         if (Math.abs(prevPulseForDOM - pulse) > 0.01 || fadeAlpha < 1.0) {
             prevPulseForDOM = pulse;
             bonjiBg.style.opacity      = String((0.3 + pulse * 0.5) * fadeAlpha);
@@ -477,30 +525,21 @@
         renderer.render(scene, camera);
     }
 
-    // =============================================
-    // Page Visibility API（バックグラウンド節電）
-    // =============================================
-
-    // [修正②] suspend前にenv.triggerRelease()を呼ぶ
-    //   これでsuspend/resume時のクリックノイズを防ぐ
     const forceSuspendAudio = () => {
         stopLoop();
         if (Tone.context.state === 'running') {
             if (isTuning && !isStopping) {
-                env.triggerRelease(); // エンベロープを先に閉じる
+                env.triggerRelease();
             }
             Tone.context.suspend();
         }
     };
 
-    // [修正②] resume後にupdateAudioAndUI()で周波数を再同期
-    //   resumeはPromiseを返すので.then()で順序を保証する
     const resumeAudioIfNeeded = () => {
         if (isTuning && !isStopping) {
             Tone.context.resume().then(() => {
-                // 再開時にエンベロープを再トリガー
                 env.triggerAttack();
-                updateAudioAndUI(); // 周波数・フィルターを再同期
+                updateAudioAndUI();
             });
             lastTs             = performance.now();
             lastRenderRealTime = performance.now();
@@ -518,9 +557,6 @@
 
     window.addEventListener('pagehide', forceSuspendAudio);
 
-    // =============================================
-    // チャクラボタン生成
-    // =============================================
     chakraData.forEach((chakra, index) => {
         const btn = document.createElement('button');
         btn.className = 'chakra-btn';
@@ -530,9 +566,6 @@
         chakraSelector.appendChild(btn);
     });
 
-    // =============================================
-    // イベントリスナー
-    // =============================================
     actionBtn.onclick = toggleTuning;
 
     btnVis.onclick = () => {
@@ -562,9 +595,6 @@
 
     document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
-    // =============================================
-    // 初期UI表示
-    // =============================================
     updateAudioAndUI();
 </script>
 
