@@ -113,7 +113,6 @@
     .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
 
-    /* トースト通知用 */
     #toast-msg {
         position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
         background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px;
@@ -217,21 +216,18 @@
 
     let renderer, scene, camera, particleSystem, material;
 
-    // 改善1: 処理落ちを防ぐためルックアヘッド（先読み）を少しだけ確保
     Tone.context.lookAhead = 0.15;
 
-    // 改善2: 音割れ（ザザッというノイズ）を完全に防ぐリミッターを追加
     const limiter = new Tone.Limiter(-1).toDestination();
     
-    // リミッターに接続するように変更
     const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).connect(limiter);
     const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
 
-    // 改善3: ホワイトノイズを撤去し、絶対にザザッと鳴らない1Hzの超低周波サイン波に変更
-    const denormalFix = new Tone.Oscillator({ type: "sine", frequency: 1, volume: -100 }).connect(delay);
+    // デノーマル対策の変更：ゼロ交差のない極めて小さな固定値（DCオフセット）を流し続ける
+    const denormalFix = new Tone.Signal(0.000001).connect(delay);
 
     function initThree() {
         if (renderer) return;
@@ -240,7 +236,8 @@
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
 
-        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
+        // WebGLの設定見直し：iOSに負荷管理を委ねるため powerPreference を削除
+        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(CONFIG.pixelRatio);
         container.appendChild(renderer.domElement);
@@ -393,7 +390,8 @@
             }
 
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.value = 0;
+            // ボリューム操作時のノイズ軽減のため、極僅かなフェード処理を追加
+            Tone.Destination.volume.rampTo(0, 0.01);
 
             reverb.wet.value = 0.4;
             delay.wet.value  = 0.15;
@@ -401,7 +399,6 @@
             initThree();
 
             if (osc.state !== "started") osc.start();
-            if (denormalFix.state !== "started") denormalFix.start();
 
             updateAudioAndUI();
             env.triggerAttack();
@@ -530,7 +527,7 @@
         if (isTuning && !isStopping) {
             Tone.context.resume().then(() => {
                 Tone.Destination.volume.cancelScheduledValues(Tone.now());
-                Tone.Destination.volume.value = 0;
+                Tone.Destination.volume.rampTo(0, 0.01);
                 env.triggerAttack();
                 updateAudioAndUI();
             });
