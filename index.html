@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（クリーン版）</title>
+    <title>言霊チューナー（最適化版）</title>
 
 <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
 <link rel="icon" href="icon2.png?v=2">
@@ -147,14 +147,12 @@
     let isTuning = false; let isStopping = false; let visMode = 2; let tuningMode = 0; let breathMode = 0;
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
 
-    // --- Audio Logic (Cleaned) ---
-    Tone.context.lookAhead = 0.2; // iOSの処理落ち対策（さらに余裕を確保）
+    Tone.context.lookAhead = 0.2;
     const limiter = new Tone.Limiter(-2).toDestination();
     const reverb = new Tone.Freeverb({ roomSize: 0.5, dampening: 3000 }).connect(limiter);
     const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.15, wet: 0.1 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
     
-    // 【重要】DCオフセットやノイズを全撤去。最小値を0.00001にすることでデノーマルを回避。
     const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(filter);
     const osc = new Tone.Oscillator({ type: "triangle", volume: -8 }).connect(env);
 
@@ -240,7 +238,11 @@
             document.getElementById('note-display').innerText = `${base.toNote().toUpperCase()} / ${Math.round(freq)}Hz`;
         }
         if (material) { material.uniforms.uColor.value.setHex(data.color); material.uniforms.uChakraId.value = data.id; }
-        if (isTuning && !isStopping) { osc.frequency.rampTo(freq, 1.0); filter.frequency.rampTo(freq * 5, 0.5); }
+        if (isTuning && !isStopping) { 
+            osc.frequency.rampTo(freq, 1.0); 
+            // 修正②: 切替時のフィルターの動きを緩やかに (1.5s)
+            filter.frequency.rampTo(freq * 5, 1.5); 
+        }
     }
 
     async function toggleTuning() {
@@ -257,17 +259,22 @@
             shaderAccumulatedTime = 0;
             startLoop();
         } else {
+            // 修正①: 停止処理の強化
             isStopping = true; actionBtn.disabled = true; actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
             env.triggerRelease();
+            // 音声を3秒かけてフェードアウト
+            Tone.Destination.volume.rampTo(-60, 3.0);
             setTimeout(async () => {
+                // コンテキスト停止前にボリュームを戻しておく
+                Tone.Destination.volume.value = 0;
                 stopLoop(); await Tone.context.suspend();
                 if(renderer){
                     renderer.dispose(); document.getElementById('webgl-container').removeChild(renderer.domElement);
                     renderer = null; material = null; scene = null;
                 }
                 isTuning = false; isStopping = false; actionBtn.disabled = false; actionBtn.innerText = "TUNING START";
-            }, 3000);
+            }, 4500); // 余裕を持って4.5秒待機
         }
     }
 
@@ -275,7 +282,7 @@
     function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
     function loop(ts) {
         rafId = requestAnimationFrame(loop);
-        if (ts - lastTs < 45) return; // 約20FPSに制限してCPU負荷を軽減
+        if (ts - lastTs < 45) return; 
         lastTs = ts;
         if (!renderer || !material) return;
         const now = performance.now();
