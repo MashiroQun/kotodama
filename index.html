@@ -86,18 +86,16 @@
     .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
     .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
     
-    /* ブロックの透明度を0.4に引き上げ、磨りガラス効果を強化 */
+    /* UIパネルの透過率を最大化、磨りガラスを撤廃 */
     #control-panel { 
         flex: 0 0 auto; 
-        background-color: rgba(15, 15, 15, 0.4); 
+        background-color: rgba(15, 15, 15, 0.1); 
         border: 1px solid rgba(255,255,255,0.1); 
         border-radius: 24px; 
         padding: 3% 5%; 
         text-align: center; 
         width: 100%; 
         max-width: 400px; 
-        backdrop-filter: blur(15px); 
-        -webkit-backdrop-filter: blur(15px); 
     }
     
     #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
@@ -151,7 +149,7 @@
         { id: 1, kanji: "地", yomi: "ち",     on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
         { id: 2, kanji: "海", yomi: "うみ",   on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
         { id: 3, kanji: "陽", yomi: "よう",   on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",      meaning: "火 / 意志 /活力 / みぞおち" },
-        { id: 4, kanji: "和", yomi: "わ",     on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",     meaning: "風 / 調和 / 愛 / 胸" },
+        { id: 4, kanji: "和", yomi: "わ",     on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",     meaning: "風 / 調和 / 爱 / 胸" },
         { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏",      meaning: "空 / 表現 / 空間 / 喉" },
         { id: 6, kanji: "理", yomi: "ことわり",on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌",     meaning: "識 / 直感 / 叡智 / 眉間" },
         { id: 7, kanji: "宙", yomi: "そら",   on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
@@ -163,8 +161,7 @@
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
     let stopStartTime = 0;
 
-    // タイマー管理：ご要望通りのインターバル
-    let timerDuration = 0; // minutes
+    let timerDuration = 0; 
     let timerSessionStartTime = 0;
     const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
     let timerStepIdx = 0;
@@ -172,17 +169,16 @@
     function cycleTimer() {
         timerStepIdx = (timerStepIdx + 1) % timerSteps.length;
         timerDuration = timerSteps[timerStepIdx];
-        document.getElementById('btn-timer').innerText = timerDuration === 0 ? "OFF" : timerDuration + "M";
+        const btn = document.getElementById('btn-timer');
+        btn.innerText = timerDuration === 0 ? "OFF" : timerDuration + "M";
         if (isTuning) timerSessionStartTime = performance.now();
     }
 
     // --- Audio chain ---
-    // 改善：lookAheadをしっかり確保し、latencyHintをplaybackに固定して「揺らぎ」を吸収
     Tone.context.lookAhead = 0.5; 
     Tone.context.latencyHint = "playback";
 
     const limiter = new Tone.Limiter(-1).toDestination();
-    // 修正：Freeverbを調整。dampeningを上げ、揺らぎ（うぁんうぁん感）を抑える
     const reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
     const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
@@ -211,8 +207,6 @@
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
-        
-        // 改善：iPhone 15の負荷を下げるためにlow-power設定を明示
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(0.5);
@@ -351,10 +345,15 @@
                     if(container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
                     renderer = null; material = null; scene = null;
                 }
-                isTuning = false; isStopping = false;
+                isTuning = false; 
+                isStopping = false;
                 actionBtn.disabled = false;
                 actionBtn.innerText = "TUNING START";
                 Tone.Destination.volume.value = 0;
+                
+                // タイマー表示のリセット
+                const btn = document.getElementById('btn-timer');
+                btn.innerText = timerDuration === 0 ? "OFF" : timerDuration + "M";
             }, 3200);
         }
     }
@@ -362,8 +361,7 @@
     function startLoop() { if (!rafId) rafId = requestAnimationFrame(loop); }
     function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
     
-    // FPSブレーキ（30FPS固定）の復活
-    const FPS_LIMIT = 33.3; // 約30fps
+    const FPS_LIMIT = 33.3; 
     function loop(ts) {
         if (!isTuning) return;
         rafId = requestAnimationFrame(loop);
@@ -375,26 +373,25 @@
         if (!renderer || !material) return;
         const now = performance.now();
         
-        // 改善：タイマー判定。バイブ通知後に確認ダイアログ
+        // タイマー処理とボタンへのカウントダウン表示
         if (timerDuration > 0 && !isStopping) {
-            const elapsedMin = (now - timerSessionStartTime) / 60000;
-            if (elapsedMin >= timerDuration) {
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                // 自動で止めず、ユーザーの意志を確認
-                if (confirm(timerDuration + "分経過しました。終了しますか？")) {
-                    toggleTuning();
-                } else {
-                    timerDuration = 0; // 継続する場合はタイマーをOFFにする
-                    document.getElementById('btn-timer').innerText = "OFF";
-                    timerStepIdx = 0;
-                }
+            const elapsedSec = (now - timerSessionStartTime) / 1000;
+            const totalSec = timerDuration * 60;
+            const remaining = Math.max(0, totalSec - elapsedSec);
+            
+            const m = Math.floor(remaining / 60);
+            const s = Math.floor(remaining % 60);
+            document.getElementById('btn-timer').innerText = m + ":" + (s < 10 ? "0" : "") + s;
+
+            if (remaining <= 0) {
+                toggleTuning(); // 自動停止
+                return;
             }
         }
 
         let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
         
-        // 呼吸ガイドのタイミング
         const activeSec = breathMode === 0 ? 8.0 : 16.0; 
         const holdSec = 1.0;
         const period = activeSec * 2 + holdSec * 2;
@@ -419,7 +416,6 @@
         renderer.render(scene, camera);
     }
 
-    // 初期化
     chakraData.forEach((c, i) => {
         const b = document.createElement('button'); 
         b.className = 'chakra-btn'; 
