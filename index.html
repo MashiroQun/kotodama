@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（最適化版）</title>
+    <title>言霊チューナー（フル実装版）</title>
 
 <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
 <link rel="icon" href="icon2.png?v=2">
@@ -86,8 +86,19 @@
     .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
     .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
     
-    /* コントロールパネルの透明度を0.6に引き上げ */
-    #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; margin-bottom: 0; width: 100%; max-width: 400px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    /* ブロックの透明度を0.4に引き上げ、磨りガラス効果を強化 */
+    #control-panel { 
+        flex: 0 0 auto; 
+        background-color: rgba(15, 15, 15, 0.4); 
+        border: 1px solid rgba(255,255,255,0.1); 
+        border-radius: 24px; 
+        padding: 3% 5%; 
+        text-align: center; 
+        width: 100%; 
+        max-width: 400px; 
+        backdrop-filter: blur(15px); 
+        -webkit-backdrop-filter: blur(15px); 
+    }
     
     #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
     #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5vh; }
@@ -128,9 +139,9 @@
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
             <div style="display: flex; justify-content: center; width: 100%; gap: 10px; margin-top: 4vh;">
-                <button id="btn-check-update" class="toggle-btn" style="flex: 1.5;" onclick="checkForUpdate()">UPDATE CHECK</button>
-                <button id="update-button" class="toggle-btn" style="display: none; flex: 1.5;" onclick="executeAppUpdate()">APPLY UPDATE</button>
-                <button id="btn-timer" class="toggle-btn" style="flex: 1; border-color: rgba(255,255,255,0.3);" onclick="cycleTimer()">OFF</button>
+                <button id="btn-check-update" class="toggle-btn" style="flex: 1.2;" onclick="checkForUpdate()">UPDATE CHECK</button>
+                <button id="update-button" class="toggle-btn" style="display: none; flex: 1.2;" onclick="executeAppUpdate()">APPLY UPDATE</button>
+                <button id="btn-timer" class="toggle-btn" style="flex: 1; background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.4);" onclick="cycleTimer()">OFF</button>
             </div>
         </div>
     </div>
@@ -152,7 +163,7 @@
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
     let stopStartTime = 0;
 
-    // タイマー管理
+    // タイマー管理：ご要望通りのインターバル
     let timerDuration = 0; // minutes
     let timerSessionStartTime = 0;
     const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
@@ -161,18 +172,18 @@
     function cycleTimer() {
         timerStepIdx = (timerStepIdx + 1) % timerSteps.length;
         timerDuration = timerSteps[timerStepIdx];
-        document.getElementById('btn-timer').innerText = timerDuration === 0 ? "OFF" : `${timerDuration}M`;
-        if (isTuning) timerSessionStartTime = performance.now(); // 動作中に変えた場合リセット
+        document.getElementById('btn-timer').innerText = timerDuration === 0 ? "OFF" : timerDuration + "M";
+        if (isTuning) timerSessionStartTime = performance.now();
     }
 
     // --- Audio chain ---
-    // 改善：lookAheadを0.5秒に設定し、OS割り込みへの耐性を強化
+    // 改善：lookAheadをしっかり確保し、latencyHintをplaybackに固定して「揺らぎ」を吸収
     Tone.context.lookAhead = 0.5; 
     Tone.context.latencyHint = "playback";
 
     const limiter = new Tone.Limiter(-1).toDestination();
-    // JCReverbを廃止し、より自然で軽いFreeverbを採用
-    const reverb = new Tone.Freeverb({ roomSize: 0.4, dampening: 3000 }).connect(limiter);
+    // 修正：Freeverbを調整。dampeningを上げ、揺らぎ（うぁんうぁん感）を抑える
+    const reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
     const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
     const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(filter);
@@ -201,7 +212,7 @@
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
         
-        // パフォーマンス優先設定
+        // 改善：iPhone 15の負荷を下げるためにlow-power設定を明示
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(0.5);
@@ -268,7 +279,7 @@
         document.getElementById('kanji-display').innerText = data.kanji;
         document.getElementById('yomi-display').innerText = data.yomi;
         document.getElementById('bonji-bg').innerText = data.bonji;
-        document.getElementById('on-display').innerText = `${data.on} / [ ${data.phonetic} ]`;
+        document.getElementById('on-display').innerText = data.on + " / [ " + data.phonetic + " ]";
         document.getElementById('meaning').innerText = data.meaning;
         document.documentElement.style.setProperty('--accent-color', data.strColor);
 
@@ -276,7 +287,7 @@
             if (idx === currentChakraIndex) {
                 btn.classList.add('active');
                 btn.style.backgroundColor = data.strColor;
-                btn.style.boxShadow = `0 0 10px ${data.strColor}`;
+                btn.style.boxShadow = "0 0 10px " + data.strColor;
             } else {
                 btn.classList.remove('active');
                 btn.style.backgroundColor = 'rgba(0,0,0,0.5)';
@@ -286,10 +297,10 @@
 
         let freq = getFreq();
         if (tuningMode === 2) {
-            document.getElementById('note-display').innerText = `ソルフェジオ / ${freq}Hz`;
+            document.getElementById('note-display').innerText = "ソルフェジオ / " + freq + "Hz";
         } else {
             const baseNote = Tone.Frequency(data.note).transpose(tuningMode * 12).toNote().toUpperCase();
-            document.getElementById('note-display').innerText = `${baseNote} (${data.solfege}) / ${Math.round(freq)}Hz`;
+            document.getElementById('note-display').innerText = baseNote + " (" + data.solfege + ") / " + Math.round(freq) + "Hz";
         }
 
         if (material) { 
@@ -351,8 +362,8 @@
     function startLoop() { if (!rafId) rafId = requestAnimationFrame(loop); }
     function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
     
-    // FPS制限付きループ (30FPS)
-    const FPS_LIMIT = 33; // ~30fps
+    // FPSブレーキ（30FPS固定）の復活
+    const FPS_LIMIT = 33.3; // 約30fps
     function loop(ts) {
         if (!isTuning) return;
         rafId = requestAnimationFrame(loop);
@@ -364,17 +375,18 @@
         if (!renderer || !material) return;
         const now = performance.now();
         
-        // タイマー判定
+        // 改善：タイマー判定。バイブ通知後に確認ダイアログ
         if (timerDuration > 0 && !isStopping) {
             const elapsedMin = (now - timerSessionStartTime) / 60000;
             if (elapsedMin >= timerDuration) {
-                // バイブレーション（iOS Safariは非対応の場合が多いがコードとして記述）
                 if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                // 確認ダイアログを表示（ここで音が鳴り続け、ユーザーがOKを押すと止まる）
-                if (confirm("タイマー時間が経過しました。チューニングを終了しますか？")) {
+                // 自動で止めず、ユーザーの意志を確認
+                if (confirm(timerDuration + "分経過しました。終了しますか？")) {
                     toggleTuning();
                 } else {
-                    timerDuration = 0; // キャンセルした場合はタイマーOFFに
+                    timerDuration = 0; // 継続する場合はタイマーをOFFにする
+                    document.getElementById('btn-timer').innerText = "OFF";
+                    timerStepIdx = 0;
                 }
             }
         }
@@ -382,7 +394,8 @@
         let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
         
-        const activeSec = 8.0; 
+        // 呼吸ガイドのタイミング
+        const activeSec = breathMode === 0 ? 8.0 : 16.0; 
         const holdSec = 1.0;
         const period = activeSec * 2 + holdSec * 2;
         const t = elapsed % period;
@@ -402,10 +415,11 @@
         material.uniforms.uOpacity.value = 0.6 * alpha;
         
         document.getElementById('bonji-bg').style.opacity = (0.3 + pulse * 0.5) * alpha;
-        document.getElementById('chakra-ring').style.transform = `translate(-50%, -50%) scale(${0.5 + pulse * 0.5})`;
+        document.getElementById('chakra-ring').style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
         renderer.render(scene, camera);
     }
 
+    // 初期化
     chakraData.forEach((c, i) => {
         const b = document.createElement('button'); 
         b.className = 'chakra-btn'; 
