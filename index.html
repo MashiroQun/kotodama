@@ -149,10 +149,7 @@
     let stopStartTime = 0;
 
     // --- Audio chain ---
-    // 改善：モバイルの不安定さをカバーするためlookAheadを大きく確保
-    Tone.context.lookAhead = 0.5; 
-    Tone.context.latencyHint = "playback";
-
+    Tone.context.lookAhead = 0.2; // 0.4から少し詰めて反応を改善
     const limiter = new Tone.Limiter(-2).toDestination();
     const reverb = new Tone.JCReverb({ roomSize: 0.3 }).connect(limiter);
     const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
@@ -182,7 +179,7 @@
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
-        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
+        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(0.5);
         container.appendChild(renderer.domElement);
@@ -252,15 +249,14 @@
         document.getElementById('meaning').innerText = data.meaning;
         document.documentElement.style.setProperty('--accent-color', data.strColor);
 
+        // ボタンのアクティブ状態を更新（色の復活）
         document.querySelectorAll('.chakra-btn').forEach((btn, idx) => {
             if (idx === currentChakraIndex) {
                 btn.classList.add('active');
                 btn.style.backgroundColor = data.strColor;
-                btn.style.boxShadow = `0 0 10px ${data.strColor}`;
             } else {
                 btn.classList.remove('active');
                 btn.style.backgroundColor = 'rgba(0,0,0,0.5)';
-                btn.style.boxShadow = 'none';
             }
         });
 
@@ -291,6 +287,7 @@
             actionBtn.innerText = "TUNING STOP";
             if (Tone.context.state !== 'running') await Tone.start();
             
+            // 重要：停止時のボリューム予約をキャンセルして0に戻す
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             Tone.Destination.volume.value = 0;
 
@@ -298,7 +295,8 @@
             createOsc(getFreq());
             updateAudioAndUI();
             env.triggerAttack();
-            tuneStartTime = lastRenderRealTime = performance.now();
+            tuneStartTime = lastRenderRealTime = lastTs = performance.now();
+            shaderAccumulatedTime = 0;
             startLoop();
         } else {
             isStopping = true;
@@ -307,6 +305,7 @@
             stopStartTime = performance.now();
             env.triggerRelease();
             
+            // 音を消していく
             Tone.Destination.volume.rampTo(-60, 3.0);
             
             setTimeout(async () => {
@@ -322,17 +321,21 @@
                 isTuning = false; isStopping = false;
                 actionBtn.disabled = false;
                 actionBtn.innerText = "TUNING START";
+                // ボリュームを元に戻しておく
                 Tone.Destination.volume.value = 0;
-            }, 3200);
+            }, 3500); // 4500から3500に短縮してテンポを改善
         }
     }
 
     function startLoop() { if (!rafId) rafId = requestAnimationFrame(loop); }
     function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
     
-    function loop() {
-        if (!isTuning) return;
+    function loop(ts) {
+        if (!isTuning) return; // チューニング中でなければ抜ける
         rafId = requestAnimationFrame(loop);
+        
+        if (ts - lastTs < 33) return; // 約30FPSで安定させる
+        lastTs = ts;
         
         if (!renderer || !material) return;
         const now = performance.now();
@@ -363,6 +366,7 @@
         renderer.render(scene, camera);
     }
 
+    // 初期化: ボタン生成
     chakraData.forEach((c, i) => {
         const b = document.createElement('button'); 
         b.className = 'chakra-btn'; 
@@ -376,6 +380,7 @@
     document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode]; updateAudioAndUI(); };
     document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode]; };
     
+    // ページ読み込み時にUIを初期化
     updateAudioAndUI();
 </script>
 
