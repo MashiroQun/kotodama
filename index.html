@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -6,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（完全統合版）</title>
+    <title>言霊チューナー（クリーン版）</title>
 
 <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
 <link rel="icon" href="icon2.png?v=2">
@@ -16,15 +17,6 @@
 <link rel="manifest" href="manifest.json">
 
 <script>
-  // ストレージ永続化リクエスト
-  async function requestPersistentStorage() {
-    if (navigator.storage && navigator.storage.persist) {
-      const isPersisted = await navigator.storage.persist();
-      console.log(`ストレージ永続化: ${isPersisted ? '許可' : '未許可'}`);
-    }
-  }
-  requestPersistentStorage();
-
   let newWorker;
   let isUpdating = false;
 
@@ -54,7 +46,7 @@
         if (reg) {
           reg.update().then(() => {
             if (!reg.installing) showToast("現在のバージョンが最新です");
-          }).catch(() => showToast("通信エラー"));
+          });
         }
       });
     }
@@ -104,7 +96,7 @@
     #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
     .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
-    #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
 </style>
 
 </head>
@@ -133,9 +125,9 @@
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
-            <div style="display: flex; justify-content: center; width: 100%; margin-top: 4vh; padding-bottom: 0.5vh;">
-                <button id="btn-check-update" class="toggle-btn" style="flex: 1; border-color: rgba(255,255,255,0.1); opacity: 0.7;" onclick="checkForUpdate()">UPDATE CHECK</button>
-                <button id="update-button" class="toggle-btn" style="flex: 1; display: none; background: rgba(255,255,255,0.2); border-color: #FFF; font-weight: bold;" onclick="executeAppUpdate()">APPLY UPDATE</button>
+            <div style="display: flex; justify-content: center; width: 100%; margin-top: 4vh;">
+                <button id="btn-check-update" class="toggle-btn" onclick="checkForUpdate()">UPDATE CHECK</button>
+                <button id="update-button" class="toggle-btn" style="display: none;" onclick="executeAppUpdate()">APPLY UPDATE</button>
             </div>
         </div>
     </div>
@@ -152,20 +144,11 @@
     ];
 
     const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
-    const visNames   = ['VIS: 2Dサイマ', 'VIS: 3Dトーラス', 'VIS: 統合3D'];
-    const tuneNames  = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
-    const breathNames= ['呼吸: 8秒', '呼吸: 16秒'];
-
     let currentChakraIndex = 0;
     let isTuning = false; let isStopping = false; let visMode = 2; let tuningMode = 0; let breathMode = 0;
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
 
-    // デバイス別CONFIGの復元
-    const isIPhone = /iPhone/.test(navigator.userAgent);
-    const isIPad   = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
-    const CONFIG = isIPhone ? { particles: 250, pixelRatio: 0.5 } : isIPad ? { particles: 330, pixelRatio: 0.5 } : { particles: 500, pixelRatio: 0.5 };
-
-    // Audio設定
+    // --- Audio Logic (Cleaned) ---
     Tone.context.lookAhead = 0.2;
     const limiter = new Tone.Limiter(-2).toDestination();
     const reverb = new Tone.Freeverb({ roomSize: 0.5, dampening: 3000 }).connect(limiter);
@@ -184,10 +167,10 @@
         camera.position.z = 400;
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(CONFIG.pixelRatio);
+        renderer.setPixelRatio(0.5);
         container.appendChild(renderer.domElement);
 
-        const count = CONFIG.particles;
+        const count = 250;
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(count * 3);
         const indices = new Float32Array(count);
@@ -253,13 +236,12 @@
         } else {
             const base = Tone.Frequency(data.note).transpose(tuningMode * 12);
             freq = base.toFrequency();
-            document.getElementById('note-display').innerText = `${base.toNote().toUpperCase()} (${data.solfege}) / ${Math.round(freq)}Hz`;
+            document.getElementById('note-display').innerText = `${base.toNote().toUpperCase()} / ${Math.round(freq)}Hz`;
         }
         if (material) { material.uniforms.uColor.value.setHex(data.color); material.uniforms.uChakraId.value = data.id; }
-        if (isTuning && !isStopping) { 
-            osc.frequency.rampTo(freq, 1.0); 
-            // 修正②: フィルターの動きを緩やかに
-            filter.frequency.rampTo(freq * 5, 1.5); 
+        if (isTuning && !isStopping) {
+            osc.frequency.rampTo(freq, 1.0);
+            filter.frequency.rampTo(freq * 5, 1.5); // 修正①: 0.5 → 1.5（チャクラ切替時のノイズ軽減）
         }
     }
 
@@ -277,20 +259,19 @@
             shaderAccumulatedTime = 0;
             startLoop();
         } else {
-            // 修正①: 停止処理の強化
             isStopping = true; actionBtn.disabled = true; actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
             env.triggerRelease();
-            Tone.Destination.volume.rampTo(-60, 3.0);
+            Tone.Destination.volume.rampTo(-60, 3.0); // 修正②: 停止時に音量フェードを追加
             setTimeout(async () => {
-                Tone.Destination.volume.value = 0;
+                Tone.Destination.volume.value = 0; // 修正②: 音量をリセット
                 stopLoop(); await Tone.context.suspend();
                 if(renderer){
                     renderer.dispose(); document.getElementById('webgl-container').removeChild(renderer.domElement);
                     renderer = null; material = null; scene = null;
                 }
                 isTuning = false; isStopping = false; actionBtn.disabled = false; actionBtn.innerText = "TUNING START";
-            }, 4500);
+            }, 4500); // 修正③: 3000 → 4500（releaseが完了してからコンテキスト停止）
         }
     }
 
@@ -298,7 +279,7 @@
     function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
     function loop(ts) {
         rafId = requestAnimationFrame(loop);
-        if (ts - lastTs < 45) return; 
+        if (ts - lastTs < 45) return;
         lastTs = ts;
         if (!renderer || !material) return;
         const now = performance.now();
@@ -318,26 +299,17 @@
         renderer.render(scene, camera);
     }
 
-    // 各ボタンのリスナー設定
     chakraData.forEach((c, i) => {
         const b = document.createElement('button'); b.className = 'chakra-btn'; b.innerText = c.id;
         b.onclick = () => { currentChakraIndex = i; updateAudioAndUI(); };
         document.getElementById('chakra-selector').appendChild(b);
     });
     document.getElementById('action-btn').onclick = toggleTuning;
-    document.getElementById('btn-vis').onclick = () => { visMode = (visMode + 1) % 3; document.getElementById('btn-vis').innerText = visNames[visMode]; if(material) material.uniforms.uVisMode.value = visMode; };
-    document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = tuneNames[tuningMode]; updateAudioAndUI(); };
-    document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = breathNames[breathMode]; };
-
-    window.addEventListener('resize', () => {
-        if (camera && renderer) {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-    });
-    document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    document.getElementById('btn-vis').onclick = () => { visMode = (visMode + 1) % 3; document.getElementById('btn-vis').innerText = ['VIS: 2D','VIS: 3D','VIS: 統合3D'][visMode]; if(material) material.uniforms.uVisMode.value = visMode; };
+    document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode]; updateAudioAndUI(); };
+    document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode]; };
     updateAudioAndUI();
 </script>
+
 </body>
 </html>
