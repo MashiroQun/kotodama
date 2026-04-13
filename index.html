@@ -147,15 +147,32 @@
     let currentChakraIndex = 0;
     let isTuning = false; let isStopping = false; let visMode = 2; let tuningMode = 0; let breathMode = 0;
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
+    let stopStartTime = 0;
 
-    // --- Audio Logic (Cleaned) ---
+    // --- Audio chain（oscだけをセッションごとに生成・破棄する）---
     Tone.context.lookAhead = 0.2;
     const limiter = new Tone.Limiter(-2).toDestination();
     const reverb = new Tone.Freeverb({ roomSize: 0.5, dampening: 3000 }).connect(limiter);
     const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.15, wet: 0.1 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
     const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(filter);
-    const osc = new Tone.Oscillator({ type: "triangle", volume: -8 }).connect(env);
+
+    // 修正：oscはグローバルに固定せず、セッション開始時に生成・終了時に破棄
+    let osc = null;
+
+    function createOsc(freq) {
+        osc = new Tone.Oscillator({ type: "triangle", frequency: freq, volume: -8 }).connect(env);
+        osc.start();
+    }
+
+    function destroyOsc() {
+        if (osc) {
+            try { osc.stop(); } catch(e) {}
+            try { osc.disconnect(); } catch(e) {}
+            try { osc.dispose(); } catch(e) {}
+            osc = null;
+        }
+    }
 
     let renderer, scene, camera, particleSystem, material;
 
@@ -220,6 +237,12 @@
         scene.add(particleSystem);
     }
 
+    function getFreq() {
+        const data = chakraData[currentChakraIndex];
+        if (tuningMode === 2) return solfeggioFreqs[currentChakraIndex];
+        return Tone.Frequency(data.note).transpose(tuningMode * 12).toFrequency();
+    }
+
     function updateAudioAndUI() {
         const data = chakraData[currentChakraIndex];
         document.getElementById('kanji-display').innerText = data.kanji;
@@ -241,37 +264,47 @@
         if (material) { material.uniforms.uColor.value.setHex(data.color); material.uniforms.uChakraId.value = data.id; }
         if (isTuning && !isStopping) {
             osc.frequency.rampTo(freq, 1.0);
-            filter.frequency.rampTo(freq * 5, 1.5); // 修正①: 0.5 → 1.5（チャクラ切替時のノイズ軽減）
+            filter.frequency.rampTo(freq * 5, 1.5);
         }
     }
+
+    const actionBtn = document.getElementById('action-btn');
 
     async function toggleTuning() {
         if (isStopping) return;
         if (!isTuning) {
-            isTuning = true; actionBtn.innerText = "TUNING STOP";
+            isTuning = true;
+            actionBtn.innerText = "TUNING STOP";
             if (Tone.context.state !== 'running') await Tone.start();
             Tone.Destination.volume.value = 0;
             initThree();
-            if (osc.state !== "started") osc.start();
+            createOsc(getFreq()); // 修正：新しいoscを生成してから開始
             updateAudioAndUI();
             env.triggerAttack();
             tuneStartTime = lastRenderRealTime = lastTs = performance.now();
             shaderAccumulatedTime = 0;
             startLoop();
         } else {
-            isStopping = true; actionBtn.disabled = true; actionBtn.innerText = "RESETTING...";
+            isStopping = true;
+            actionBtn.disabled = true;
+            actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
             env.triggerRelease();
-            Tone.Destination.volume.rampTo(-60, 3.0); // 修正②: 停止時に音量フェードを追加
+            Tone.Destination.volume.rampTo(-60, 3.0); // envのreleaseと並行して音量フェード
             setTimeout(async () => {
-                Tone.Destination.volume.value = 0; // 修正②: 音量をリセット
-                stopLoop(); await Tone.context.suspend();
-                if(renderer){
-                    renderer.dispose(); document.getElementById('webgl-container').removeChild(renderer.domElement);
+                Tone.Destination.volume.value = 0;
+                stopLoop();
+                destroyOsc(); // 修正：oscを明示的にstop→disconnect→dispose
+                await Tone.context.suspend();
+                if (renderer) {
+                    renderer.dispose();
+                    document.getElementById('webgl-container').removeChild(renderer.domElement);
                     renderer = null; material = null; scene = null;
                 }
-                isTuning = false; isStopping = false; actionBtn.disabled = false; actionBtn.innerText = "TUNING START";
-            }, 4500); // 修正③: 3000 → 4500（releaseが完了してからコンテキスト停止）
+                isTuning = false; isStopping = false;
+                actionBtn.disabled = false;
+                actionBtn.innerText = "TUNING START";
+            }, 4500); // release(2.5秒)＋フェード余裕を確保
         }
     }
 
@@ -288,7 +321,7 @@
         const period = breathMode === 0 ? 10.0 : 18.0;
         const t = elapsed % period;
         let pulse = (t > 1.0 && t < period - 1.0) ? (1.0 - Math.cos(((t-1.0)/(period-2.0))*Math.PI*2))*0.5 : 0;
-        
+
         shaderAccumulatedTime += Math.min((now - lastRenderRealTime)*0.001, 0.1);
         lastRenderRealTime = now;
         material.uniforms.uTime.value = shaderAccumulatedTime;
@@ -304,7 +337,7 @@
         b.onclick = () => { currentChakraIndex = i; updateAudioAndUI(); };
         document.getElementById('chakra-selector').appendChild(b);
     });
-    document.getElementById('action-btn').onclick = toggleTuning;
+    actionBtn.onclick = toggleTuning;
     document.getElementById('btn-vis').onclick = () => { visMode = (visMode + 1) % 3; document.getElementById('btn-vis').innerText = ['VIS: 2D','VIS: 3D','VIS: 統合3D'][visMode]; if(material) material.uniforms.uVisMode.value = visMode; };
     document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode]; updateAudioAndUI(); };
     document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode]; };
