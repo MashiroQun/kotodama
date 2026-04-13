@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（完全版）</title>
+    <title>言霊チューナー（クリーン版）</title>
 
 <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
 <link rel="icon" href="icon2.png?v=2">
@@ -16,22 +16,12 @@
 <link rel="manifest" href="manifest.json">
 
 <script>
-  async function requestPersistentStorage() {
-    if (navigator.storage && navigator.storage.persist) {
-      const isPersisted = await navigator.storage.persist();
-      console.log(`ストレージ永続化: ${isPersisted ? '許可' : '未許可'}`);
-    }
-  }
-  requestPersistentStorage();
-
   let newWorker;
   let isUpdating = false;
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').then(reg => {
-        console.log('SW registered.');
-        
         reg.addEventListener('updatefound', () => {
           newWorker = reg.installing;
           newWorker.addEventListener('statechange', () => {
@@ -41,13 +31,9 @@
             }
           });
         });
-      }).catch(err => console.log('SW registration failed:', err));
-
+      });
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!isUpdating) {
-          isUpdating = true;
-          window.location.reload();
-        }
+        if (!isUpdating) { isUpdating = true; window.location.reload(); }
       });
     });
   }
@@ -59,9 +45,6 @@
         if (reg) {
           reg.update().then(() => {
             if (!reg.installing) showToast("現在のバージョンが最新です");
-            else showToast("更新が見つかりました");
-          }).catch(err => {
-            showToast("通信エラー（オフライン状態です）");
           });
         }
       });
@@ -69,7 +52,7 @@
   }
 
   function executeAppUpdate() {
-    if (confirm("新しいバージョンを適用してアプリを再起動しますか？")) {
+    if (confirm("更新を適用して再起動しますか？")) {
       if (newWorker) newWorker.postMessage({ type: 'SKIP_WAITING' });
     }
   }
@@ -112,19 +95,12 @@
     #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
     .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
-
-    #toast-msg {
-        position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
-        background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px;
-        border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif;
-        font-size: 13px; z-index: 9999; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        opacity: 0; pointer-events: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
+    #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
 </style>
 
 </head>
 <body>
-    <div id="toast-msg">メッセージ</div>
+    <div id="toast-msg"></div>
     <div id="webgl-container"></div>
     <div id="bonji-bg">𑖀</div>
     <div id="ui-layer">
@@ -148,9 +124,9 @@
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
-            <div style="display: flex; justify-content: center; width: 100%; margin-top: 4vh; padding-bottom: 0.5vh;">
-                <button id="btn-check-update" class="toggle-btn" style="flex: 1; border-color: rgba(255,255,255,0.1); opacity: 0.7;" onclick="checkForUpdate()">UPDATE CHECK</button>
-                <button id="update-button" class="toggle-btn" style="flex: 1; display: none; background: rgba(255,255,255,0.2); border-color: #FFF; font-weight: bold;" onclick="executeAppUpdate()">APPLY UPDATE</button>
+            <div style="display: flex; justify-content: center; width: 100%; margin-top: 4vh;">
+                <button id="btn-check-update" class="toggle-btn" onclick="checkForUpdate()">UPDATE CHECK</button>
+                <button id="update-button" class="toggle-btn" style="display: none;" onclick="executeAppUpdate()">APPLY UPDATE</button>
             </div>
         </div>
     </div>
@@ -167,426 +143,168 @@
     ];
 
     const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
-    const visNames   = ['VIS: 2Dサイマ', 'VIS: 3Dトーラス', 'VIS: 統合3D'];
-    const tuneNames  = ['TUNE: 基本', 'TUNE: ＋１', 'TUNE: ソルフェジオ'];
-    const breathNames= ['呼吸: 8秒', '呼吸: 16秒'];
-
     let currentChakraIndex = 0;
-    let isTuning    = false;
-    let isStopping  = false;
-    let stopStartTime = 0;
-    let visMode     = 2;
-    let tuningMode  = 0;
-    let breathMode  = 0;
+    let isTuning = false; let isStopping = false; let visMode = 2; let tuningMode = 0; let breathMode = 0;
+    let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
 
-    let rafId = null;
-    let lastTs = 0;
-    let prevPulseForDOM = -1;
-
-    let tuneStartTime        = 0;
-    let shaderAccumulatedTime= 0;
-    let lastRenderRealTime   = 0;
-
-    function float(v) { return parseFloat(v); }
-
-    const TARGET_FPS      = 20;
-    const TARGET_INTERVAL = 1000 / TARGET_FPS;
-
-    const isIPhone = /iPhone/.test(navigator.userAgent);
-    const isIPad   = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
-
-    const CONFIG = isIPhone
-        ? { particles: 250, pixelRatio: 0.5 }
-        : isIPad
-        ? { particles: 330, pixelRatio: 0.5 }
-        : { particles: 500, pixelRatio: 0.5 };
-
-    const bonjiBg        = document.getElementById('bonji-bg');
-    const chakraRing     = document.getElementById('chakra-ring');
-    const kanjiDisplay   = document.getElementById('kanji-display');
-    const yomiDisplay    = document.getElementById('yomi-display');
-    const onDisplay      = document.getElementById('on-display');
-    const noteDisplay    = document.getElementById('note-display');
-    const meaningDisplay = document.getElementById('meaning');
-    const actionBtn      = document.getElementById('action-btn');
-    const chakraSelector = document.getElementById('chakra-selector');
-    const btnVis         = document.getElementById('btn-vis');
-    const btnTune        = document.getElementById('btn-tune');
-    const btnBreath      = document.getElementById('btn-breath');
+    // --- Audio Logic (Cleaned) ---
+    Tone.context.lookAhead = 0.2; // iOSの処理落ち対策（さらに余裕を確保）
+    const limiter = new Tone.Limiter(-2).toDestination();
+    const reverb = new Tone.Freeverb({ roomSize: 0.5, dampening: 3000 }).connect(limiter);
+    const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.15, wet: 0.1 }).connect(reverb);
+    const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
+    
+    // 【重要】DCオフセットやノイズを全撤去。最小値を0.00001にすることでデノーマルを回避。
+    const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(filter);
+    const osc = new Tone.Oscillator({ type: "triangle", volume: -8 }).connect(env);
 
     let renderer, scene, camera, particleSystem, material;
-
-    Tone.context.lookAhead = 0.15;
-
-    const limiter = new Tone.Limiter(-1).toDestination();
-    
-    const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).connect(limiter);
-    const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
-    const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
-    const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
-    const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
-
-    // デノーマル対策の変更：ゼロ交差のない極めて小さな固定値（DCオフセット）を流し続ける
-    const denormalFix = new Tone.Signal(0.000001).connect(delay);
 
     function initThree() {
         if (renderer) return;
         const container = document.getElementById('webgl-container');
-        scene  = new THREE.Scene();
+        scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
-
-        // WebGLの設定見直し：iOSに負荷管理を委ねるため powerPreference を削除
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(CONFIG.pixelRatio);
+        renderer.setPixelRatio(0.5);
         container.appendChild(renderer.domElement);
 
-        const count = CONFIG.particles;
-        const geometry  = new THREE.BufferGeometry();
+        const count = 250;
+        const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(count * 3);
-        const indices   = new Float32Array(count);
+        const indices = new Float32Array(count);
         for (let i = 0; i < count; i++) indices[i] = i / count;
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('aIndex',   new THREE.BufferAttribute(indices,    1));
+        geometry.setAttribute('aIndex', new THREE.BufferAttribute(indices, 1));
 
         material = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime:     { value: 0.0 },
-                uPulse:    { value: 0.0 },
-                uColor:    { value: new THREE.Color(chakraData[currentChakraIndex].color) },
-                uChakraId: { value: float(chakraData[currentChakraIndex].id) },
-                uVisMode:  { value: float(visMode) },
-                uOpacity:  { value: 0.0 }
-            },
+            uniforms: { uTime: {value: 0}, uPulse: {value: 0}, uColor: {value: new THREE.Color(0xffffff)}, uChakraId: {value: 1}, uVisMode: {value: 2}, uOpacity: {value: 0} },
             vertexShader: `
                 precision mediump float;
-                uniform float uTime;
-                uniform float uPulse;
-                uniform float uChakraId;
-                uniform float uVisMode;
+                uniform float uTime, uPulse, uChakraId, uVisMode;
                 attribute float aIndex;
-                const float PI2 = 6.2831853;
-
                 void main() {
-                    float isOuter  = step(0.5, aIndex);
-                    float dir      = isOuter == 1.0 ? -1.0 : 1.0;
-                    float scaleMul = isOuter == 1.0 ? 1.25 : 0.75;
-
-                    float t = fract(aIndex * 2.0) * PI2;
-                    float S = (150.0 + uPulse * 40.0) * scaleMul;
+                    float isOuter = step(0.5, aIndex);
+                    float dir = isOuter == 1.0 ? -1.0 : 1.0;
+                    float t = fract(aIndex * 2.0) * 6.2831853;
+                    float S = (150.0 + uPulse * 40.0) * (isOuter == 1.0 ? 1.25 : 0.75);
                     vec3 pos;
-
-                    if (uVisMode < 0.5) {
-                        float a = uChakraId * t + uTime * 0.5 * dir;
-                        pos = vec3(sin(a) * S, cos(t * (uChakraId + 1.0)) * S, 0.0);
-                    } else if (uVisMode < 1.5) {
-                        float u = floor(fract(aIndex * 2.0) * 20.0) * (PI2 / 20.0) + uTime * 0.2 * dir;
-                        float v = fract(aIndex * 40.0) * PI2 + uTime * 0.3;
-                        float cu = cos(u); float su = sin(u);
-                        float cv = cos(v); float sv = sin(v);
+                    if(uVisMode < 0.5){ pos = vec3(sin(uChakraId * t + uTime * 0.5 * dir) * S, cos(t * (uChakraId + 1.0)) * S, 0.0); }
+                    else if(uVisMode < 1.5){
+                        float u = floor(fract(aIndex * 2.0) * 20.0) * (6.283 / 20.0) + uTime * 0.2 * dir;
+                        float v = fract(aIndex * 40.0) * 6.283 + uTime * 0.3;
                         float R = S * 0.8, r = S * 0.4;
-                        float rc = R + r * cv;
-                        pos = vec3(rc * cu, rc * su, r * sv);
+                        pos = vec3((R + r * cos(v)) * cos(u), (R + r * cos(v)) * sin(u), r * sin(v));
                     } else {
                         float u = uChakraId * t * 4.0 + uTime * 0.1 * dir;
                         float v = (uChakraId + 2.0) * t * 4.0 + uTime * 0.2;
-                        float cu = cos(u); float su = sin(u);
-                        float cv = cos(v); float sv = sin(v);
-                        float r  = S * 0.5;
-                        float rc = S * 0.9 + r * cv;
-                        pos = vec3(rc * cu, rc * su * sv, r * sv);
+                        float r = S * 0.5, rc = S * 0.9 + r * cos(v);
+                        pos = vec3(rc * cos(u), rc * sin(u) * sin(v), r * sin(v));
                     }
-
-                    gl_Position  = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
                     gl_PointSize = (2.5 + uPulse * 2.5) * (isOuter == 1.0 ? 0.7 : 1.3);
                 }
             `,
             fragmentShader: `
                 precision mediump float;
-                uniform vec3  uColor;
-                uniform float uOpacity;
+                uniform vec3 uColor; uniform float uOpacity;
                 void main() {
-                    vec2 d = gl_PointCoord - 0.5;
-                    if (dot(d, d) > 0.25) discard;
+                    if (dot(gl_PointCoord-0.5, gl_PointCoord-0.5) > 0.25) discard;
                     gl_FragColor = vec4(uColor, uOpacity);
                 }
             `,
-            transparent: true,
-            blending:    THREE.AdditiveBlending,
-            depthWrite:  false
+            transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
         });
-
         particleSystem = new THREE.Points(geometry, material);
-        particleSystem.frustumCulled = false;
         scene.add(particleSystem);
-    }
-
-    function disposeThree() {
-        if (!renderer) return;
-        stopLoop();
-
-        if (particleSystem) {
-            scene.remove(particleSystem);
-            particleSystem.geometry.dispose();
-            particleSystem.material.dispose();
-        }
-        renderer.dispose();
-        const container = document.getElementById('webgl-container');
-        if (container && container.contains(renderer.domElement)) {
-            container.removeChild(renderer.domElement);
-        }
-        renderer = null; material = null; particleSystem = null; scene = null; camera = null;
     }
 
     function updateAudioAndUI() {
         const data = chakraData[currentChakraIndex];
-        kanjiDisplay.innerText   = data.kanji;
-        yomiDisplay.innerText    = data.yomi;
-        bonjiBg.innerText        = data.bonji;
-        onDisplay.innerText      = `${data.on} / [ ${data.phonetic} ]`;
-        meaningDisplay.innerText = data.meaning;
-
-        let targetFreqVal;
-        if (tuningMode === 2) {
-            targetFreqVal = solfeggioFreqs[currentChakraIndex];
-            noteDisplay.innerText = `ソルフェジオ / ${targetFreqVal}Hz`;
-        } else {
-            const baseFreq   = Tone.Frequency(data.note);
-            const targetFreq = baseFreq.transpose(tuningMode * 12);
-            targetFreqVal    = targetFreq.toFrequency();
-            noteDisplay.innerText = `${tuningMode === 1 ? baseFreq.transpose(12).toNote().toUpperCase() : data.note} (${data.solfege}) / ${Math.round(targetFreqVal)}Hz`;
-        }
-
+        document.getElementById('kanji-display').innerText = data.kanji;
+        document.getElementById('yomi-display').innerText = data.yomi;
+        document.getElementById('bonji-bg').innerText = data.bonji;
+        document.getElementById('on-display').innerText = `${data.on} / [ ${data.phonetic} ]`;
+        document.getElementById('meaning').innerText = data.meaning;
         document.documentElement.style.setProperty('--accent-color', data.strColor);
-        if (material) {
-            material.uniforms.uColor.value.setHex(data.color);
-            material.uniforms.uChakraId.value = float(data.id);
+
+        let freq;
+        if (tuningMode === 2) {
+            freq = solfeggioFreqs[currentChakraIndex];
+            document.getElementById('note-display').innerText = `ソルフェジオ / ${freq}Hz`;
+        } else {
+            const base = Tone.Frequency(data.note).transpose(tuningMode * 12);
+            freq = base.toFrequency();
+            document.getElementById('note-display').innerText = `${base.toNote().toUpperCase()} / ${Math.round(freq)}Hz`;
         }
-
-        document.querySelectorAll('.chakra-btn').forEach((btn, i) => {
-            btn.className = `chakra-btn ${i === currentChakraIndex ? 'active' : ''}`;
-            btn.style.backgroundColor = i === currentChakraIndex ? data.strColor : 'rgba(255,255,255,0.1)';
-        });
-
-        bonjiBg.style.textShadow   = `0 0 30px rgba(0,0,0,1), 0 0 40px ${data.strColor}`;
-        chakraRing.style.boxShadow = `0 0 50px ${data.strColor}`;
-
-        if (isTuning && !isStopping) {
-            osc.frequency.rampTo(targetFreqVal, 1.5);
-            filter.frequency.rampTo(targetFreqVal * 6, 0.5);
-        }
+        if (material) { material.uniforms.uColor.value.setHex(data.color); material.uniforms.uChakraId.value = data.id; }
+        if (isTuning && !isStopping) { osc.frequency.rampTo(freq, 1.0); filter.frequency.rampTo(freq * 5, 0.5); }
     }
 
     async function toggleTuning() {
         if (isStopping) return;
-
         if (!isTuning) {
-            isTuning = true;
-            actionBtn.innerText = "TUNING STOP";
-
-            if (Tone.context.state !== 'running') {
-                await Tone.start();
-            }
-
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            // ボリューム操作時のノイズ軽減のため、極僅かなフェード処理を追加
-            Tone.Destination.volume.rampTo(0, 0.01);
-
-            reverb.wet.value = 0.4;
-            delay.wet.value  = 0.15;
-
+            isTuning = true; actionBtn.innerText = "TUNING STOP";
+            if (Tone.context.state !== 'running') await Tone.start();
+            Tone.Destination.volume.value = 0;
             initThree();
-
             if (osc.state !== "started") osc.start();
-
             updateAudioAndUI();
             env.triggerAttack();
-
-            prevPulseForDOM = -1;
-            const now = performance.now();
-            tuneStartTime        = now;
-            lastRenderRealTime   = now;
-            shaderAccumulatedTime= 0;
-            lastTs               = now;
-
+            tuneStartTime = lastRenderRealTime = lastTs = performance.now();
+            shaderAccumulatedTime = 0;
             startLoop();
-
         } else {
-            isStopping = true;
-            actionBtn.disabled  = true;
-            actionBtn.innerText = "RESETTING...";
+            isStopping = true; actionBtn.disabled = true; actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
-
             env.triggerRelease();
-
             setTimeout(async () => {
-                try {
-                    stopLoop();
-                    await Tone.context.suspend();
-                    disposeThree();
-                } catch(e) { console.log(e); }
-                finally {
-                    isTuning    = false;
-                    isStopping  = false;
-                    actionBtn.disabled  = false;
-                    actionBtn.innerText = "TUNING START";
-                    bonjiBg.style.opacity      = '0.4';
-                    chakraRing.style.opacity   = '0.4';
-                    chakraRing.style.transform = 'translate(-50%, -50%) scale(0.5)';
+                stopLoop(); await Tone.context.suspend();
+                if(renderer){
+                    renderer.dispose(); document.getElementById('webgl-container').removeChild(renderer.domElement);
+                    renderer = null; material = null; scene = null;
                 }
+                isTuning = false; isStopping = false; actionBtn.disabled = false; actionBtn.innerText = "TUNING START";
             }, 3000);
         }
     }
 
-    function startLoop() {
-        if (rafId) return;
-        lastTs = performance.now();
-        rafId  = requestAnimationFrame(loop);
-    }
-
-    function stopLoop() {
-        if (rafId) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-        }
-    }
-
+    function startLoop() { if (!rafId) rafId = requestAnimationFrame(loop); }
+    function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
     function loop(ts) {
-        if (!isTuning) { rafId = null; return; }
         rafId = requestAnimationFrame(loop);
-
-        const dt = ts - lastTs;
-        if (dt < TARGET_INTERVAL - 1) return;
-
-        lastTs = ts - (dt % TARGET_INTERVAL);
-        drawFrame(ts);
-    }
-
-    function drawFrame(ts) {
+        if (ts - lastTs < 45) return; // 約20FPSに制限してCPU負荷を軽減
+        lastTs = ts;
         if (!renderer || !material) return;
-
-        const currentNow = performance.now();
-        let fadeAlpha = 1.0;
-
-        if (isStopping) {
-            fadeAlpha = Math.max(0, 1.0 - (currentNow - stopStartTime) / 2500);
-            if (fadeAlpha <= 0) return;
-        }
-
-        const elapsedSec = (currentNow - tuneStartTime) * 0.001;
-
-        const activeSec = breathMode === 0 ? 4.0 : 8.0;
-        const holdSec   = 1.0;
-        const period    = activeSec * 2 + holdSec * 2;
-        const t = elapsedSec % period;
-        let pulse = 0;
-
-        if (t < holdSec) {
-            pulse = 0.0;
-        } else if (t < holdSec + activeSec) {
-            const phaseT = t - holdSec;
-            pulse = (1.0 - Math.cos((phaseT / activeSec) * Math.PI)) * 0.5;
-        } else if (t < holdSec * 2 + activeSec) {
-            pulse = 1.0;
-        } else {
-            const phaseT = t - (holdSec * 2 + activeSec);
-            pulse = (1.0 + Math.cos((phaseT / activeSec) * Math.PI)) * 0.5;
-        }
-
-        const deltaSec = Math.min((currentNow - lastRenderRealTime) * 0.001, 0.1);
-        lastRenderRealTime     = currentNow;
-        shaderAccumulatedTime += deltaSec;
-
-        if (Math.abs(prevPulseForDOM - pulse) > 0.01 || fadeAlpha < 1.0) {
-            prevPulseForDOM = pulse;
-            bonjiBg.style.opacity      = String((0.3 + pulse * 0.5) * fadeAlpha);
-            chakraRing.style.opacity   = String((0.2 + pulse * 0.4) * fadeAlpha);
-            chakraRing.style.transform = `translate(-50%, -50%) scale(${0.5 + pulse * 0.5})`;
-        }
-
-        material.uniforms.uTime.value    = shaderAccumulatedTime;
-        material.uniforms.uPulse.value   = pulse;
-        material.uniforms.uOpacity.value = 0.6 * fadeAlpha;
-
-        particleSystem.rotation.z += deltaSec * 0.05;
+        const now = performance.now();
+        let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2500) : 1.0;
+        const elapsed = (now - tuneStartTime) * 0.001;
+        const period = breathMode === 0 ? 10.0 : 18.0;
+        const t = elapsed % period;
+        let pulse = (t > 1.0 && t < period - 1.0) ? (1.0 - Math.cos(((t-1.0)/(period-2.0))*Math.PI*2))*0.5 : 0;
+        
+        shaderAccumulatedTime += Math.min((now - lastRenderRealTime)*0.001, 0.1);
+        lastRenderRealTime = now;
+        material.uniforms.uTime.value = shaderAccumulatedTime;
+        material.uniforms.uPulse.value = pulse;
+        material.uniforms.uOpacity.value = 0.6 * alpha;
+        document.getElementById('bonji-bg').style.opacity = (0.3 + pulse * 0.5) * alpha;
+        document.getElementById('chakra-ring').style.transform = `translate(-50%, -50%) scale(${0.5 + pulse * 0.5})`;
         renderer.render(scene, camera);
     }
 
-    const forceSuspendAudio = () => {
-        stopLoop();
-        if (Tone.context.state === 'running') {
-            if (isTuning && !isStopping) {
-                env.triggerRelease();
-            }
-            Tone.context.suspend();
-        }
-    };
-
-    const resumeAudioIfNeeded = () => {
-        if (isTuning && !isStopping) {
-            Tone.context.resume().then(() => {
-                Tone.Destination.volume.cancelScheduledValues(Tone.now());
-                Tone.Destination.volume.rampTo(0, 0.01);
-                env.triggerAttack();
-                updateAudioAndUI();
-            });
-            lastTs             = performance.now();
-            lastRenderRealTime = performance.now();
-            startLoop();
-        }
-    };
-
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-            forceSuspendAudio();
-        } else {
-            resumeAudioIfNeeded();
-        }
+    chakraData.forEach((c, i) => {
+        const b = document.createElement('button'); b.className = 'chakra-btn'; b.innerText = c.id;
+        b.onclick = () => { currentChakraIndex = i; updateAudioAndUI(); };
+        document.getElementById('chakra-selector').appendChild(b);
     });
-
-    window.addEventListener('pagehide', forceSuspendAudio);
-
-    chakraData.forEach((chakra, index) => {
-        const btn = document.createElement('button');
-        btn.className = 'chakra-btn';
-        btn.style.backgroundColor = 'rgba(255,255,255,0.1)';
-        btn.innerText = chakra.id;
-        btn.onclick = () => { currentChakraIndex = index; updateAudioAndUI(); };
-        chakraSelector.appendChild(btn);
-    });
-
-    actionBtn.onclick = toggleTuning;
-
-    btnVis.onclick = () => {
-        visMode = (visMode + 1) % 3;
-        btnVis.innerText = visNames[visMode];
-        if (material) material.uniforms.uVisMode.value = float(visMode);
-    };
-
-    btnTune.onclick = () => {
-        tuningMode = (tuningMode + 1) % 3;
-        btnTune.innerText = tuneNames[tuningMode];
-        updateAudioAndUI();
-    };
-
-    btnBreath.onclick = () => {
-        breathMode = (breathMode + 1) % 2;
-        btnBreath.innerText = breathNames[breathMode];
-    };
-
-    window.addEventListener('resize', () => {
-        if (camera && renderer) {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-    });
-
-    document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-
+    document.getElementById('action-btn').onclick = toggleTuning;
+    document.getElementById('btn-vis').onclick = () => { visMode = (visMode + 1) % 3; document.getElementById('btn-vis').innerText = ['VIS: 2D','VIS: 3D','VIS: 統合3D'][visMode]; if(material) material.uniforms.uVisMode.value = visMode; };
+    document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode]; updateAudioAndUI(); };
+    document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode]; };
     updateAudioAndUI();
 </script>
-
 </body>
 </html>
