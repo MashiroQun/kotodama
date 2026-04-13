@@ -223,7 +223,6 @@
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
 
-    // デノーマル対策：ノイズを生成するが、ここではstart()しない
     const noiseFloor = new Tone.Noise("white");
     noiseFloor.volume.value = -100;
     noiseFloor.connect(delay);
@@ -393,7 +392,6 @@
                 osc.start();
             }
             
-            // ユーザー操作の直後にノイズを安全に起動
             if (noiseFloor.state !== "started") {
                 noiseFloor.start();
             }
@@ -421,17 +419,14 @@
             env.triggerRelease();
 
             setTimeout(() => {
-                // NaNエラー回避のため、-Infinity ではなく -100 を使用
                 osc.volume.rampTo(-100, 1.0);
-                setTimeout(() => {
-                    if (!isTuning) osc.stop();
-                }, 1200);
+                // 修正：ここの setTimeout と osc.stop() を完全に削除しました
             }, 1000);
 
             setTimeout(async () => {
                 try {
                     stopLoop();
-                    Tone.Destination.volume.rampTo(-100, 0.1); // -Infinityから変更
+                    Tone.Destination.volume.rampTo(-100, 0.1);
                     setTimeout(async () => {
                         await Tone.context.suspend();
                         disposeThree();
@@ -525,12 +520,10 @@
         renderer.render(scene, camera);
     }
 
-    // サスペンド処理の改善
     const forceSuspendAudio = () => {
         stopLoop();
         if (Tone.context.state === 'running') {
             if (isTuning && !isStopping) {
-                // ボリュームを安全な数値まで下げてからサスペンド
                 Tone.Destination.volume.rampTo(-100, 0.1);
                 setTimeout(() => {
                     Tone.context.suspend();
@@ -544,7 +537,6 @@
     const resumeAudioIfNeeded = () => {
         if (isTuning && !isStopping) {
             Tone.context.resume().then(() => {
-                // サスペンドから復帰する際にボリュームを0に戻す
                 Tone.Destination.volume.rampTo(0, 0.1);
                 env.triggerAttack();
                 updateAudioAndUI();
