@@ -217,16 +217,21 @@
 
     let renderer, scene, camera, particleSystem, material;
 
-    const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).toDestination();
+    // 改善1: 処理落ちを防ぐためルックアヘッド（先読み）を少しだけ確保
+    Tone.context.lookAhead = 0.15;
+
+    // 改善2: 音割れ（ザザッというノイズ）を完全に防ぐリミッターを追加
+    const limiter = new Tone.Limiter(-1).toDestination();
+    
+    // リミッターに接続するように変更
+    const reverb = new Tone.Freeverb({ roomSize: 0.6, dampening: 4000 }).connect(limiter);
     const delay  = new Tone.PingPongDelay({ delayTime: 0.3, feedback: 0.2, wet: 0.15 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 600, type: "lowpass", rolloff: -24 }).connect(delay);
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
 
-    // デノーマル対策（ノイズ）
-    const noiseFloor = new Tone.Noise("white");
-    noiseFloor.volume.value = -100;
-    noiseFloor.connect(delay);
+    // 改善3: ホワイトノイズを撤去し、絶対にザザッと鳴らない1Hzの超低周波サイン波に変更
+    const denormalFix = new Tone.Oscillator({ type: "sine", frequency: 1, volume: -100 }).connect(delay);
 
     function initThree() {
         if (renderer) return;
@@ -396,7 +401,7 @@
             initThree();
 
             if (osc.state !== "started") osc.start();
-            if (noiseFloor.state !== "started") noiseFloor.start();
+            if (denormalFix.state !== "started") denormalFix.start();
 
             updateAudioAndUI();
             env.triggerAttack();
@@ -511,7 +516,6 @@
         renderer.render(scene, camera);
     }
 
-    // 元の優秀な即時サスペンド・ロジックに復旧
     const forceSuspendAudio = () => {
         stopLoop();
         if (Tone.context.state === 'running') {
