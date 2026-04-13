@@ -223,6 +223,7 @@
     const env    = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.0 }).connect(filter);
     const osc    = new Tone.Oscillator({ type: "triangle", volume: -6 }).connect(env);
 
+    // デノーマル対策（ノイズ）
     const noiseFloor = new Tone.Noise("white");
     noiseFloor.volume.value = -100;
     noiseFloor.connect(delay);
@@ -382,26 +383,26 @@
             isTuning = true;
             actionBtn.innerText = "TUNING STOP";
 
-            if (Tone.context.state !== 'running') await Tone.start();
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+
+            // バグの元凶対策：過去のボリューム操作スケジュールを強制キャンセルして0に戻す
+            Tone.Destination.volume.cancelScheduledValues(Tone.now());
+            Tone.Destination.volume.value = 0;
+
             reverb.wet.value = 0.4;
             delay.wet.value  = 0.15;
 
             initThree();
 
-            if (osc.state !== "started") {
-                osc.start();
-            }
-            
-            if (noiseFloor.state !== "started") {
-                noiseFloor.start();
-            }
+            if (osc.state !== "started") osc.start();
+            if (noiseFloor.state !== "started") noiseFloor.start();
 
-            osc.volume.value = -6;
             updateAudioAndUI();
             env.triggerAttack();
 
             prevPulseForDOM = -1;
-
             const now = performance.now();
             tuneStartTime        = now;
             lastRenderRealTime   = now;
@@ -416,22 +417,17 @@
             actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
 
+            // エンベロープが2.0秒かけて綺麗に音量を完全に0にしてくれます
             env.triggerRelease();
-
-            setTimeout(() => {
-                osc.volume.rampTo(-100, 1.0);
-                // 修正：ここの setTimeout と osc.stop() を完全に削除しました
-            }, 1000);
+            
+            // （ここに書いてあった不要で競合するボリューム操作を全削除しました）
 
             setTimeout(async () => {
                 try {
                     stopLoop();
-                    Tone.Destination.volume.rampTo(-100, 0.1);
-                    setTimeout(async () => {
-                        await Tone.context.suspend();
-                        disposeThree();
-                        Tone.Destination.volume.value = 0;
-                    }, 150);
+                    // フェードアウトが完全に終わった後にサスペンドするだけ
+                    await Tone.context.suspend();
+                    disposeThree();
                 } catch(e) { console.log(e); }
                 finally {
                     isTuning    = false;
@@ -442,7 +438,7 @@
                     chakraRing.style.opacity   = '0.4';
                     chakraRing.style.transform = 'translate(-50%, -50%) scale(0.5)';
                 }
-            }, 3500);
+            }, 3000); // 確実なフェードアウト完了のために3秒待つ
         }
     }
 
@@ -524,10 +520,10 @@
         stopLoop();
         if (Tone.context.state === 'running') {
             if (isTuning && !isStopping) {
+                // バックグラウンド移行時は安全なフェードアウトを予約
+                Tone.Destination.volume.cancelScheduledValues(Tone.now());
                 Tone.Destination.volume.rampTo(-100, 0.1);
-                setTimeout(() => {
-                    Tone.context.suspend();
-                }, 150);
+                setTimeout(() => { Tone.context.suspend(); }, 150);
             } else {
                 Tone.context.suspend();
             }
@@ -537,6 +533,8 @@
     const resumeAudioIfNeeded = () => {
         if (isTuning && !isStopping) {
             Tone.context.resume().then(() => {
+                // 復帰時にもスケジュールを必ずリセット
+                Tone.Destination.volume.cancelScheduledValues(Tone.now());
                 Tone.Destination.volume.rampTo(0, 0.1);
                 env.triggerAttack();
                 updateAudioAndUI();
