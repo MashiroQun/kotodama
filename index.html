@@ -149,15 +149,15 @@
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
     let stopStartTime = 0;
 
-    // --- Audio chain（oscだけをセッションごとに生成・破棄する）---
-    Tone.context.lookAhead = 0.2;
+    // --- Audio chain ---
+    Tone.context.lookAhead = 0.4; // 修正: 0.2 → 0.4（高負荷・充電中のバッファアンダーラン対策）
     const limiter = new Tone.Limiter(-2).toDestination();
     const reverb = new Tone.Freeverb({ roomSize: 0.5, dampening: 3000 }).connect(limiter);
     const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.15, wet: 0.1 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
     const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(filter);
 
-    // 修正：oscはグローバルに固定せず、セッション開始時に生成・終了時に破棄
+    // oscはセッションごとに生成・破棄
     let osc = null;
 
     function createOsc(freq) {
@@ -278,7 +278,7 @@
             if (Tone.context.state !== 'running') await Tone.start();
             Tone.Destination.volume.value = 0;
             initThree();
-            createOsc(getFreq()); // 修正：新しいoscを生成してから開始
+            createOsc(getFreq());
             updateAudioAndUI();
             env.triggerAttack();
             tuneStartTime = lastRenderRealTime = lastTs = performance.now();
@@ -290,11 +290,11 @@
             actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
             env.triggerRelease();
-            Tone.Destination.volume.rampTo(-60, 3.0); // envのreleaseと並行して音量フェード
+            Tone.Destination.volume.rampTo(-60, 3.0);
             setTimeout(async () => {
                 Tone.Destination.volume.value = 0;
                 stopLoop();
-                destroyOsc(); // 修正：oscを明示的にstop→disconnect→dispose
+                destroyOsc();
                 await Tone.context.suspend();
                 if (renderer) {
                     renderer.dispose();
@@ -304,7 +304,7 @@
                 isTuning = false; isStopping = false;
                 actionBtn.disabled = false;
                 actionBtn.innerText = "TUNING START";
-            }, 4500); // release(2.5秒)＋フェード余裕を確保
+            }, 4500);
         }
     }
 
