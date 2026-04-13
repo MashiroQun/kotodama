@@ -387,7 +387,6 @@
                 await Tone.start();
             }
 
-            // バグの元凶対策：過去のボリューム操作スケジュールを強制キャンセルして0に戻す
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             Tone.Destination.volume.value = 0;
 
@@ -417,15 +416,11 @@
             actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
 
-            // エンベロープが2.0秒かけて綺麗に音量を完全に0にしてくれます
             env.triggerRelease();
-            
-            // （ここに書いてあった不要で競合するボリューム操作を全削除しました）
 
             setTimeout(async () => {
                 try {
                     stopLoop();
-                    // フェードアウトが完全に終わった後にサスペンドするだけ
                     await Tone.context.suspend();
                     disposeThree();
                 } catch(e) { console.log(e); }
@@ -438,7 +433,7 @@
                     chakraRing.style.opacity   = '0.4';
                     chakraRing.style.transform = 'translate(-50%, -50%) scale(0.5)';
                 }
-            }, 3000); // 確実なフェードアウト完了のために3秒待つ
+            }, 3000);
         }
     }
 
@@ -516,26 +511,22 @@
         renderer.render(scene, camera);
     }
 
+    // 元の優秀な即時サスペンド・ロジックに復旧
     const forceSuspendAudio = () => {
         stopLoop();
         if (Tone.context.state === 'running') {
             if (isTuning && !isStopping) {
-                // バックグラウンド移行時は安全なフェードアウトを予約
-                Tone.Destination.volume.cancelScheduledValues(Tone.now());
-                Tone.Destination.volume.rampTo(-100, 0.1);
-                setTimeout(() => { Tone.context.suspend(); }, 150);
-            } else {
-                Tone.context.suspend();
+                env.triggerRelease();
             }
+            Tone.context.suspend();
         }
     };
 
     const resumeAudioIfNeeded = () => {
         if (isTuning && !isStopping) {
             Tone.context.resume().then(() => {
-                // 復帰時にもスケジュールを必ずリセット
                 Tone.Destination.volume.cancelScheduledValues(Tone.now());
-                Tone.Destination.volume.rampTo(0, 0.1);
+                Tone.Destination.volume.value = 0;
                 env.triggerAttack();
                 updateAudioAndUI();
             });
