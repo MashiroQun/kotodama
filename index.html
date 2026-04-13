@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -7,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（クリーン版）</title>
+    <title>言霊チューナー（最適化版）</title>
 
 <link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
 <link rel="icon" href="icon2.png?v=2">
@@ -86,7 +85,10 @@
     .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1vh; line-height: 1; }
     .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
     .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
-    #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; margin-bottom: 0; width: 100%; max-width: 400px; }
+    
+    /* コントロールパネルの透明度を0.6に引き上げ */
+    #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; margin-bottom: 0; width: 100%; max-width: 400px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    
     #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
     #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5vh; }
     .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
@@ -125,9 +127,10 @@
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
-            <div style="display: flex; justify-content: center; width: 100%; margin-top: 4vh;">
-                <button id="btn-check-update" class="toggle-btn" onclick="checkForUpdate()">UPDATE CHECK</button>
-                <button id="update-button" class="toggle-btn" style="display: none;" onclick="executeAppUpdate()">APPLY UPDATE</button>
+            <div style="display: flex; justify-content: center; width: 100%; gap: 10px; margin-top: 4vh;">
+                <button id="btn-check-update" class="toggle-btn" style="flex: 1.5;" onclick="checkForUpdate()">UPDATE CHECK</button>
+                <button id="update-button" class="toggle-btn" style="display: none; flex: 1.5;" onclick="executeAppUpdate()">APPLY UPDATE</button>
+                <button id="btn-timer" class="toggle-btn" style="flex: 1; border-color: rgba(255,255,255,0.3);" onclick="cycleTimer()">OFF</button>
             </div>
         </div>
     </div>
@@ -149,27 +152,42 @@
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let lastTs = 0; let rafId = null;
     let stopStartTime = 0;
 
+    // タイマー管理
+    let timerDuration = 0; // minutes
+    let timerSessionStartTime = 0;
+    const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
+    let timerStepIdx = 0;
+
+    function cycleTimer() {
+        timerStepIdx = (timerStepIdx + 1) % timerSteps.length;
+        timerDuration = timerSteps[timerStepIdx];
+        document.getElementById('btn-timer').innerText = timerDuration === 0 ? "OFF" : `${timerDuration}M`;
+        if (isTuning) timerSessionStartTime = performance.now(); // 動作中に変えた場合リセット
+    }
+
     // --- Audio chain ---
-    Tone.context.lookAhead = 0.4; // 修正: 0.2 → 0.4（高負荷・充電中のバッファアンダーラン対策）
-    const limiter = new Tone.Limiter(-2).toDestination();
-    const reverb = new Tone.Freeverb({ roomSize: 0.5, dampening: 3000 }).connect(limiter);
-    const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.15, wet: 0.1 }).connect(reverb);
+    // 改善：lookAheadを0.5秒に設定し、OS割り込みへの耐性を強化
+    Tone.context.lookAhead = 0.5; 
+    Tone.context.latencyHint = "playback";
+
+    const limiter = new Tone.Limiter(-1).toDestination();
+    // JCReverbを廃止し、より自然で軽いFreeverbを採用
+    const reverb = new Tone.Freeverb({ roomSize: 0.4, dampening: 3000 }).connect(limiter);
+    const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
     const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
     const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(filter);
 
-    // oscはセッションごとに生成・破棄
     let osc = null;
 
     function createOsc(freq) {
+        destroyOsc();
         osc = new Tone.Oscillator({ type: "triangle", frequency: freq, volume: -8 }).connect(env);
         osc.start();
     }
 
     function destroyOsc() {
         if (osc) {
-            try { osc.stop(); } catch(e) {}
-            try { osc.disconnect(); } catch(e) {}
-            try { osc.dispose(); } catch(e) {}
+            try { osc.stop(); osc.dispose(); } catch(e) {}
             osc = null;
         }
     }
@@ -182,7 +200,9 @@
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
-        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
+        
+        // パフォーマンス優先設定
+        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(0.5);
         container.appendChild(renderer.domElement);
@@ -252,17 +272,31 @@
         document.getElementById('meaning').innerText = data.meaning;
         document.documentElement.style.setProperty('--accent-color', data.strColor);
 
-        let freq;
+        document.querySelectorAll('.chakra-btn').forEach((btn, idx) => {
+            if (idx === currentChakraIndex) {
+                btn.classList.add('active');
+                btn.style.backgroundColor = data.strColor;
+                btn.style.boxShadow = `0 0 10px ${data.strColor}`;
+            } else {
+                btn.classList.remove('active');
+                btn.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                btn.style.boxShadow = 'none';
+            }
+        });
+
+        let freq = getFreq();
         if (tuningMode === 2) {
-            freq = solfeggioFreqs[currentChakraIndex];
             document.getElementById('note-display').innerText = `ソルフェジオ / ${freq}Hz`;
         } else {
-            const base = Tone.Frequency(data.note).transpose(tuningMode * 12);
-            freq = base.toFrequency();
-            document.getElementById('note-display').innerText = `${base.toNote().toUpperCase()} / ${Math.round(freq)}Hz`;
+            const baseNote = Tone.Frequency(data.note).transpose(tuningMode * 12).toNote().toUpperCase();
+            document.getElementById('note-display').innerText = `${baseNote} (${data.solfege}) / ${Math.round(freq)}Hz`;
         }
-        if (material) { material.uniforms.uColor.value.setHex(data.color); material.uniforms.uChakraId.value = data.id; }
-        if (isTuning && !isStopping) {
+
+        if (material) { 
+            material.uniforms.uColor.value.setHex(data.color); 
+            material.uniforms.uChakraId.value = data.id; 
+        }
+        if (isTuning && !isStopping && osc) {
             osc.frequency.rampTo(freq, 1.0);
             filter.frequency.rampTo(freq * 5, 1.5);
         }
@@ -276,13 +310,16 @@
             isTuning = true;
             actionBtn.innerText = "TUNING STOP";
             if (Tone.context.state !== 'running') await Tone.start();
+            
+            Tone.Destination.volume.cancelScheduledValues(Tone.now());
             Tone.Destination.volume.value = 0;
+
             initThree();
             createOsc(getFreq());
             updateAudioAndUI();
             env.triggerAttack();
             tuneStartTime = lastRenderRealTime = lastTs = performance.now();
-            shaderAccumulatedTime = 0;
+            timerSessionStartTime = performance.now();
             startLoop();
         } else {
             isStopping = true;
@@ -290,57 +327,98 @@
             actionBtn.innerText = "RESETTING...";
             stopStartTime = performance.now();
             env.triggerRelease();
+            
             Tone.Destination.volume.rampTo(-60, 3.0);
+            
             setTimeout(async () => {
-                Tone.Destination.volume.value = 0;
                 stopLoop();
                 destroyOsc();
                 await Tone.context.suspend();
                 if (renderer) {
                     renderer.dispose();
-                    document.getElementById('webgl-container').removeChild(renderer.domElement);
+                    const container = document.getElementById('webgl-container');
+                    if(container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
                     renderer = null; material = null; scene = null;
                 }
                 isTuning = false; isStopping = false;
                 actionBtn.disabled = false;
                 actionBtn.innerText = "TUNING START";
-            }, 4500);
+                Tone.Destination.volume.value = 0;
+            }, 3200);
         }
     }
 
     function startLoop() { if (!rafId) rafId = requestAnimationFrame(loop); }
     function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+    
+    // FPS制限付きループ (30FPS)
+    const FPS_LIMIT = 33; // ~30fps
     function loop(ts) {
+        if (!isTuning) return;
         rafId = requestAnimationFrame(loop);
-        if (ts - lastTs < 45) return;
-        lastTs = ts;
+        
+        const delta = ts - lastTs;
+        if (delta < FPS_LIMIT) return;
+        lastTs = ts - (delta % FPS_LIMIT);
+        
         if (!renderer || !material) return;
         const now = performance.now();
-        let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2500) : 1.0;
+        
+        // タイマー判定
+        if (timerDuration > 0 && !isStopping) {
+            const elapsedMin = (now - timerSessionStartTime) / 60000;
+            if (elapsedMin >= timerDuration) {
+                // バイブレーション（iOS Safariは非対応の場合が多いがコードとして記述）
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                // 確認ダイアログを表示（ここで音が鳴り続け、ユーザーがOKを押すと止まる）
+                if (confirm("タイマー時間が経過しました。チューニングを終了しますか？")) {
+                    toggleTuning();
+                } else {
+                    timerDuration = 0; // キャンセルした場合はタイマーOFFに
+                }
+            }
+        }
+
+        let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
-        const period = breathMode === 0 ? 10.0 : 18.0;
+        
+        const activeSec = 8.0; 
+        const holdSec = 1.0;
+        const period = activeSec * 2 + holdSec * 2;
         const t = elapsed % period;
-        let pulse = (t > 1.0 && t < period - 1.0) ? (1.0 - Math.cos(((t-1.0)/(period-2.0))*Math.PI*2))*0.5 : 0;
+        let pulse = 0;
+        if (t > holdSec && t < holdSec + activeSec) {
+            pulse = (1.0 - Math.cos(((t - holdSec) / activeSec) * Math.PI)) * 0.5;
+        } else if (t >= holdSec + activeSec && t <= holdSec * 2 + activeSec) {
+            pulse = 1.0;
+        } else if (t > holdSec * 2 + activeSec && t < period) {
+            pulse = (1.0 + Math.cos(((t - (holdSec * 2 + activeSec)) / activeSec) * Math.PI)) * 0.5;
+        }
 
         shaderAccumulatedTime += Math.min((now - lastRenderRealTime)*0.001, 0.1);
         lastRenderRealTime = now;
         material.uniforms.uTime.value = shaderAccumulatedTime;
         material.uniforms.uPulse.value = pulse;
         material.uniforms.uOpacity.value = 0.6 * alpha;
+        
         document.getElementById('bonji-bg').style.opacity = (0.3 + pulse * 0.5) * alpha;
         document.getElementById('chakra-ring').style.transform = `translate(-50%, -50%) scale(${0.5 + pulse * 0.5})`;
         renderer.render(scene, camera);
     }
 
     chakraData.forEach((c, i) => {
-        const b = document.createElement('button'); b.className = 'chakra-btn'; b.innerText = c.id;
+        const b = document.createElement('button'); 
+        b.className = 'chakra-btn'; 
+        b.innerText = c.id;
         b.onclick = () => { currentChakraIndex = i; updateAudioAndUI(); };
         document.getElementById('chakra-selector').appendChild(b);
     });
+
     actionBtn.onclick = toggleTuning;
     document.getElementById('btn-vis').onclick = () => { visMode = (visMode + 1) % 3; document.getElementById('btn-vis').innerText = ['VIS: 2D','VIS: 3D','VIS: 統合3D'][visMode]; if(material) material.uniforms.uVisMode.value = visMode; };
     document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode]; updateAudioAndUI(); };
     document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode]; };
+    
     updateAudioAndUI();
 </script>
 
