@@ -362,27 +362,29 @@
         let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
         
-        // --- 1-8-1-8 呼吸サイクルの再定義 ---
-        // breathMode === 0 は合計18秒（1秒キープ・8秒吸う・1秒キープ・8秒吐く）
-        const activeSec = breathMode === 0 ? 8.0 : 16.0; 
+        // --- 呼吸サイクルの完全な最適化 ---
+        // 8秒モード（breathMode === 0）: 1秒待つ -> 4秒で吸う(拡大) -> 1秒待つ -> 4秒で吐く(縮小) = 計10秒
+        // 16秒モード（breathMode === 1）: 1秒待つ -> 8秒で吸う(拡大) -> 1秒待つ -> 8秒で吐く(縮小) = 計18秒
+        const halfBreath = breathMode === 0 ? 4.0 : 8.0; 
         const holdSec = 1.0;
-        const period = activeSec * 2 + holdSec * 2; 
+        const period = halfBreath * 2 + holdSec * 2; 
         const t = elapsed % period;
         
         let pulse = 0;
         if (t <= holdSec) {
-            // 0〜1秒: インターバル（最小キープ）
+            // インターバル（縮んだ状態でキープ）
             pulse = 0.0;
-        } else if (t > holdSec && t <= holdSec + activeSec) {
-            // 1〜9秒: 吸う（8秒かけて拡大）
-            pulse = (1.0 - Math.cos(((t - holdSec) / activeSec) * Math.PI)) * 0.5;
-        } else if (t > holdSec + activeSec && t <= holdSec * 2 + activeSec) {
-            // 9〜10秒: インターバル（最大キープ）
+        } else if (t > holdSec && t <= holdSec + halfBreath) {
+            // 吸う（指定した秒数かけて拡大）
+            pulse = (1.0 - Math.cos(((t - holdSec) / halfBreath) * Math.PI)) * 0.5;
+        } else if (t > holdSec + halfBreath && t <= holdSec * 2 + halfBreath) {
+            // インターバル（広がった状態でキープ）
             pulse = 1.0;
         } else {
-            // 10〜18秒: 吐く（8秒かけて縮小）
-            pulse = (1.0 + Math.cos(((t - (holdSec * 2 + activeSec)) / activeSec) * Math.PI)) * 0.5;
+            // 吐く（指定した秒数かけて縮小）
+            pulse = (1.0 + Math.cos(((t - (holdSec * 2 + halfBreath)) / halfBreath) * Math.PI)) * 0.5;
         }
+
 
         shaderAccumulatedTime += Math.min((now - lastRenderRealTime)*0.001, 0.1);
         lastRenderRealTime = now;
