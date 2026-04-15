@@ -318,34 +318,39 @@
             env.triggerRelease();
             Tone.Destination.volume.rampTo(-60, 2.5);
 
-           // 3.2秒待機（フェードアウトが完全に終わるのを待つ）
+          // 3.2秒待機（フェードアウト完了待ち）
             await new Promise(resolve => setTimeout(resolve, 3200));
 
-            // --- ここから安全なクリーンアップ処理 ---
+            // --- ここから【AI最新推奨版】のクリーンアップ ---
             stopLoop();
             destroyOsc();
 
-            // AI推奨の「二段構え」でAudioContextを安全に休止させる
-            if (Tone.context.state !== 'suspended') {
-                const ctx = Tone.context;
-                if (ctx && typeof ctx.suspend === 'function') {
-                    // パターン1: Tone.js自体がsuspendを持っている場合
-                    await ctx.suspend();
-                    console.log("Audio suspended via Tone.context");
-                } else if (ctx && ctx.rawContext && typeof ctx.rawContext.suspend === 'function') {
-                    // パターン2: 生のAudioContext側にsuspendがある場合（今回の本命）
-                    await ctx.rawContext.suspend();
-                    console.log("Audio suspended via rawContext");
+            try {
+                // Tone.contextが存在するか確認
+                if (Tone.context) {
+                    // 1. まず「ブラウザ生の機能」を優先して叩く（これが一番確実）
+                    if (Tone.context.rawContext && typeof Tone.context.rawContext.suspend === 'function') {
+                        await Tone.context.rawContext.suspend();
+                        console.log("Success: Audio suspended via rawContext");
+                    } 
+                    // 2. もし上がダメなら「Tone.jsの機能」を試す
+                    else if (typeof Tone.context.suspend === 'function') {
+                        await Tone.context.suspend();
+                        console.log("Success: Audio suspended via Tone.context");
+                    }
                 }
+            } catch (suspendError) {
+                // 万が一、停止に失敗してもアプリを止めないためのガード
+                console.warn("Suspend skipped:", suspendError);
             }
 
-            // アプリの状態をリセット（次のSTARTに備える）
+            // アプリの状態をリセット
             isTuning = false;
             isStopping = false;
             actionBtn.disabled = false;
             updateAudioAndUI();
             
-            console.log("SUCCESS: All systems stopped safely.");
+            console.log("All systems clear.");
 
         } catch (e) {
             console.error("Cleanup failed:", e);
