@@ -9,7 +9,6 @@
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
     <title>言霊チューナー</title>
 
-```
 <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
 <link rel="icon" href="./icon-512.png" type="image/png">
 <link rel="manifest" href="./manifest.json">
@@ -17,7 +16,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-```
 
 <style>
     :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
@@ -102,11 +100,10 @@
     let timerDuration = 0; 
     let timerSessionStartTime = 0;
     const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
-    
-    let lastTimerStr = ""; // ▼これを追加（最後に表示したタイマー文字列を記憶）
+    let timerStepIdx = 0;
+    let lastTimerStr = ""; // バッテリー対策（画面の無駄な更新を防ぐ）
 
-
-    // ▼ 修正①：デバイス別FPS制御（PC=60fps / iPad=30fps / スマホ=24fps）
+    // デバイス別FPS制御（PC=60fps / iPad=30fps / スマホ=24fps）
     let TARGET_FPS = 60;
     const ua = navigator.userAgent.toLowerCase();
     const isSmartPhone = /iphone|ipod|android.*mobile|windows.*phone/.test(ua);
@@ -124,7 +121,7 @@
     }
 
     function cycleTimer() {
-        if (isTuning) return;
+        if (isTuning) return; // ※音が鳴っている間はタイマー変更をロック（仕様）
         timerStepIdx = (timerStepIdx + 1) % timerSteps.length;
         timerDuration = timerSteps[timerStepIdx];
         updateTimerDisplay();
@@ -223,7 +220,6 @@
         particleSystem = new THREE.Points(geometry, material);
         scene.add(particleSystem);
 
-        // ▼ 修正②：画面回転・リサイズ対応
         window.addEventListener('resize', () => {
             if (!renderer) return;
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -286,7 +282,6 @@
         stopStartTime = performance.now();
 
         try {
-            // ▼ 修正④：ramp前に既存スケジュールをキャンセル
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             env.triggerRelease();
             Tone.Destination.volume.rampTo(-60, 2.5);
@@ -319,9 +314,9 @@
             
             const timerBtn = document.getElementById('btn-timer-display');
             timerBtn.style.opacity = '1.0';
-            timerBtn.style.pointerEvents = 'auto';
+            timerBtn.style.pointerEvents = 'auto'; // ボタンのロック解除
             
-            updateTimerDisplay();
+            updateTimerDisplay(); // 停止時にタイマーの表示をリセット
         }
     }
 
@@ -333,7 +328,7 @@
             
             const timerBtn = document.getElementById('btn-timer-display');
             timerBtn.style.opacity = '0.5';
-            timerBtn.style.pointerEvents = 'none';
+            timerBtn.style.pointerEvents = 'none'; // ボタンを操作不可にロック
 
             if (Tone.context.state !== 'running') await Tone.start();
     
@@ -361,15 +356,15 @@
         
         const now = performance.now();
 
-        // ▼ 修正①：FPS間引き処理
+        // FPS間引き処理
         const elapsedSinceLastDraw = now - lastDrawTime;
         if (elapsedSinceLastDraw < FRAME_INTERVAL) return;
         lastDrawTime = now - (elapsedSinceLastDraw % FRAME_INTERVAL);
         
         if (!renderer || !material) return;
         
-        
-            if (timerDuration > 0 && !isStopping) {
+        // タイマー処理（バッテリー対策で1秒に1回だけ画面書き換え）
+        if (timerDuration > 0 && !isStopping) {
             const elapsedSec = (now - timerSessionStartTime) / 1000;
             const totalSec = timerDuration * 60;
             const remaining = Math.max(0, totalSec - elapsedSec);
@@ -378,7 +373,6 @@
             const s = Math.floor(remaining % 60);
             const timerStr = m + ":" + (s < 10 ? "0" : "") + s;
 
-            // ▼ 修正：文字列が前回と違う場合（1秒に1回）だけDOMを更新する
             if (timerStr !== lastTimerStr) {
                 document.getElementById('btn-timer-display').innerText = timerStr;
                 lastTimerStr = timerStr;
@@ -389,7 +383,6 @@
                 return;
             }
         }
-
 
         let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
@@ -434,7 +427,6 @@
     document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode]; updateAudioAndUI(); };
     document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode]; };
 
-    // ▼ 修正③：checkForUpdate のロジック修正（更新検知を正確に）
     function checkForUpdate() {
         if ('serviceWorker' in navigator) {
             showToast("アップデートを確認中...");
@@ -462,21 +454,18 @@
         });
     }
 
-        // ▼ 究極の省電力（オーディオ＋3D描画の完全停止）
+    // 究極の省電力（バックグラウンド移行時の完全停止）
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
-            // 画面が隠れたら音を一時停止し、Three.jsの描画ループも完全に止める
             if (Tone.context.state === 'running') Tone.context.suspend();
             stopLoop(); 
         } else {
-            // 画面に戻ってきた時、チューニング中であれば音と描画を再開する
             if (isTuning && Tone.context.state === 'suspended') {
                 Tone.context.resume();
                 startLoop(); 
             }
         }
     });
-
 
     window.addEventListener('pagehide', () => {
         destroyOsc();
@@ -485,6 +474,7 @@
 
     updateAudioAndUI();
 </script>
+
 
 </body>
 </html>
