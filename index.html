@@ -369,7 +369,7 @@
         if (!renderer || !material) return;
         
         
-        }        if (timerDuration > 0 && !isStopping) {
+            if (timerDuration > 0 && !isStopping) {
             const elapsedSec = (now - timerSessionStartTime) / 1000;
             const totalSec = timerDuration * 60;
             const remaining = Math.max(0, totalSec - elapsedSec);
