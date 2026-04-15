@@ -477,26 +477,25 @@
         }
     }
     
-
-  // 究極の省電力（バックグラウンド移行時の完全停止）
+    // HTMLDocument.<anonymous> 内の該当箇所
     document.addEventListener('visibilitychange', () => {
-        // 生のコンテキストを取得
+    if (document.hidden) {
+        // 安全なsuspend呼び出し
         const rawCtx = Tone.getContext().rawContext;
-
-        if (document.hidden) {
-            // 安全なsuspend: プロパティの存在を確認してから実行
-            if (rawCtx && typeof rawCtx.suspend === 'function' && rawCtx.state === 'running') {
-                rawCtx.suspend().catch(e => console.warn("Suspend error:", e));
-            }
-            stopLoop(); 
-        } else {
-            // 安全なresume
-            if (isTuning && rawCtx && typeof rawCtx.resume === 'function' && rawCtx.state === 'suspended') {
-                rawCtx.resume().catch(e => console.warn("Resume error:", e));
-                startLoop(); 
-            }
+        if (rawCtx && typeof rawCtx.suspend === 'function') {
+            rawCtx.suspend().catch(e => console.warn("Suspend error:", e));
         }
-    });
+        console.log("App suspended safely.");
+    } else {
+        // 復帰時も安全にresume
+        const rawCtx = Tone.getContext().rawContext;
+        if (rawCtx && typeof rawCtx.resume === 'function') {
+            rawCtx.resume().catch(e => console.warn("Resume error:", e));
+        }
+        console.log("App resumed safely.");
+    }
+});
+  
 
     window.addEventListener('pagehide', () => {
         destroyOsc();
