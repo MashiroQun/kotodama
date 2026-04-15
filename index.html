@@ -305,7 +305,7 @@
 
     const actionBtn = document.getElementById('action-btn');
 
-   async function stopTuning() {
+  async function stopTuning() {
         if (isStopping) return;
         isStopping = true;
         actionBtn.disabled = true;
@@ -313,79 +313,59 @@
         stopStartTime = performance.now();
 
         try {
-            // フェードアウト処理
+            // 1. フェードアウト（音量を下げる）
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             env.triggerRelease();
             Tone.Destination.volume.rampTo(-60, 2.5);
 
-          // 3.2秒待機（フェードアウト完了待ち）
+            // 2. フェードアウト完了待ち
             await new Promise(resolve => setTimeout(resolve, 3200));
 
-            // --- ここから【AI最新推奨版】のクリーンアップ ---
+            // 3. 楽器とレンダラーの破棄（リソース解放）
             stopLoop();
             destroyOsc();
-
-            try {
-                // Tone.contextが存在するか確認
-                if (Tone.context) {
-                    // 1. まず「ブラウザ生の機能」を優先して叩く（これが一番確実）
-                    if (Tone.context.rawContext && typeof Tone.context.rawContext.suspend === 'function') {
-                        await Tone.context.rawContext.suspend();
-                        console.log("Success: Audio suspended via rawContext");
-                    } 
-                    // 2. もし上がダメなら「Tone.jsの機能」を試す
-                    else if (typeof Tone.context.suspend === 'function') {
-                        await Tone.context.suspend();
-                        console.log("Success: Audio suspended via Tone.context");
-                    }
-                }
-            } catch (suspendError) {
-                // 万が一、停止に失敗してもアプリを止めないためのガード
-                console.warn("Suspend skipped:", suspendError);
-            }
-
-            // アプリの状態をリセット
-            isTuning = false;
-            isStopping = false;
-            actionBtn.disabled = false;
-            updateAudioAndUI();
-            
-            console.log("All systems clear.");
-
-        } catch (e) {
-            console.error("Cleanup failed:", e);
-            // エラー時も最低限ボタンは復帰させる
-            isStopping = false;
-            actionBtn.disabled = false;
-        }
-    }
 
             if (renderer) {
                 renderer.dispose();
                 const container = document.getElementById('webgl-container');
-                if(container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
-                renderer = null; material = null; scene = null;
+                if (container.contains(renderer.domElement)) {
+                    container.removeChild(renderer.domElement);
+                }
+                renderer = null; 
+                material = null; 
+                scene = null;
             }
+
+            // 4. 【合理的解決】AudioContextの休止
+            // AIの指摘通り、直接「rawContext」の存在を確認してから叩く
+            const raw = Tone.context?.rawContext;
+            if (raw && typeof raw.suspend === 'function' && raw.state !== 'suspended') {
+                await raw.suspend();
+                console.log("Audio suspended via rawContext.");
+            }
+
         } catch (e) {
-            console.error("Cleanup failed:", e);
+            // ここを通ることで、エラーが起きてもブラウザをクラッシュさせない
+            console.error("Cleanup non-critical error:", e);
         } finally {
-            isTuning = false; 
+            // 5. 【最終判決】何があっても必ずこの状態に戻す
+            isTuning = false;
             isStopping = false;
             actionBtn.disabled = false;
             actionBtn.innerText = "TUNING START";
-            Tone.Destination.volume.value = -3;
             
+            // UIとタイマーの復帰
             document.getElementById('bonji-bg').style.opacity = '0.4';
             document.getElementById('chakra-ring').style.transform = 'translate(-50%, -50%) scale(0.5)';
             
             const timerBtn = document.getElementById('btn-timer-display');
             timerBtn.style.opacity = '1.0';
-            timerBtn.style.pointerEvents = 'auto'; // ボタンのロック解除
+            timerBtn.style.pointerEvents = 'auto';
             
-            updateTimerDisplay(); // 停止時にタイマーの表示をリセット
+            updateAudioAndUI();
+            console.log("Stop complete: System ready.");
         }
     }
-
     async function toggleTuning() {
         if (isStopping) return;
         if (!isTuning) {
