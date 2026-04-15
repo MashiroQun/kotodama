@@ -6,14 +6,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
-    <title>言霊チューナー（真・完全版）</title>
+    <title>言霊チューナー</title>
 
-<link rel="apple-touch-icon" sizes="180x180" href="https://mashiroqun.github.io/kotodama/icon2.png?v=2">
-<link rel="icon" href="icon2.png?v=2">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
+    <link rel="icon" href="./icon-512.png" type="image/png">
+    <link rel="manifest" href="./manifest.json">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <style>
     :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
@@ -44,7 +45,6 @@
     .toggle-btn:active { background: rgba(255,255,255,0.3); }
     #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
 </style>
-
 </head>
 <body>
     <div id="toast-msg"></div>
@@ -100,8 +100,15 @@
     const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
     let timerStepIdx = 0;
 
+    function showToast(msg) {
+        const t = document.getElementById('toast-msg');
+        t.innerText = msg;
+        t.style.opacity = 1; t.style.transform = 'translateX(-50%) translateY(0)';
+        setTimeout(() => { t.style.opacity = 0; t.style.transform = 'translateX(-50%) translateY(-100px)'; }, 3000);
+    }
+
     function cycleTimer() {
-        if (isTuning) return; // 動作中は変更をブロック
+        if (isTuning) return;
         timerStepIdx = (timerStepIdx + 1) % timerSteps.length;
         timerDuration = timerSteps[timerStepIdx];
         updateTimerDisplay();
@@ -112,20 +119,27 @@
         btn.innerText = timerDuration === 0 ? "TIMER: OFF" : "TIMER: " + timerDuration + "分";
     }
 
-    // --- Audio chain ---
+    // --- Audio chain (スマホ最適化版) ---
     Tone.context.lookAhead = 0.5; 
     Tone.context.latencyHint = "playback";
 
+    // 1. 安定したマスター出力への直接接続（mainGainは撤去）
     const limiter = new Tone.Limiter(-1).toDestination();
+
     const reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
     const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
-    const filter = new Tone.Filter({ frequency: 800, type: "lowpass" }).connect(delay);
-    const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(filter);
+    
+    // 2. スマホ用保護フィルター：高音域のキンキン（LPF）と低音のバタつき（HPF）をカット
+    const lpf = new Tone.Filter({ frequency: 8000, type: "lowpass", rolloff: -12 }).connect(delay);
+    const hpf = new Tone.Filter({ frequency: 150, type: "highpass", rolloff: -24 }).connect(lpf);
+    
+    const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(hpf);
 
     let osc = null;
 
     function createOsc(freq) {
         destroyOsc();
+        // 三角波（Triangle）を生成。基本音量は-8dB。
         osc = new Tone.Oscillator({ type: "triangle", frequency: freq, volume: -8 }).connect(env);
         osc.start();
     }
@@ -241,7 +255,6 @@
         }
         if (isTuning && !isStopping && osc) {
             osc.frequency.rampTo(freq, 1.0);
-            filter.frequency.rampTo(freq * 5, 1.5);
         }
     }
 
@@ -255,8 +268,9 @@
         stopStartTime = performance.now();
 
         try {
-            env.triggerRelease();
-            Tone.Destination.volume.rampTo(-60, 2.5);
+             env.triggerRelease();
+    Tone.Destination.volume.rampTo(-60, 2.5); // 大元のボリュームを絞る
+
 
             await new Promise(resolve => setTimeout(resolve, 3200));
 
@@ -275,18 +289,16 @@
         } catch (e) {
             console.error("Cleanup failed:", e);
         } finally {
-            // ステートとUIを確実に初期化
             isTuning = false; 
             isStopping = false;
             actionBtn.disabled = false;
             actionBtn.innerText = "TUNING START";
-            Tone.Destination.volume.value = 0;
+    Tone.Destination.volume.value = -3; // リセット（スマホの音割れ防止のため-3dBに設定）
+
             
-            // アニメーションスタイルのリセット
             document.getElementById('bonji-bg').style.opacity = '0.4';
             document.getElementById('chakra-ring').style.transform = 'translate(-50%, -50%) scale(0.5)';
             
-            // タイマーボタンのロック解除
             const timerBtn = document.getElementById('btn-timer-display');
             timerBtn.style.opacity = '1.0';
             timerBtn.style.pointerEvents = 'auto';
@@ -301,15 +313,14 @@
             isTuning = true;
             actionBtn.innerText = "TUNING STOP";
             
-            // 動作中はタイマーボタンをロック
             const timerBtn = document.getElementById('btn-timer-display');
             timerBtn.style.opacity = '0.5';
             timerBtn.style.pointerEvents = 'none';
 
             if (Tone.context.state !== 'running') await Tone.start();
-            
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.value = 0;
+    
+    Tone.Destination.volume.cancelScheduledValues(Tone.now());
+    Tone.Destination.volume.value = -3; // ここで全体の音量を少し抑える（スマホ対応）
 
             initThree();
             createOsc(getFreq());
@@ -333,7 +344,6 @@
         if (!renderer || !material) return;
         const now = performance.now();
         
-        // タイマーカウントダウン処理
         if (timerDuration > 0 && !isStopping) {
             const elapsedSec = (now - timerSessionStartTime) / 1000;
             const totalSec = timerDuration * 60;
@@ -352,16 +362,25 @@
         let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
         
+        // --- 1-8-1-8 呼吸サイクルの再定義 ---
+        // breathMode === 0 は合計18秒（1秒キープ・8秒吸う・1秒キープ・8秒吐く）
         const activeSec = breathMode === 0 ? 8.0 : 16.0; 
         const holdSec = 1.0;
-        const period = activeSec * 2 + holdSec * 2;
+        const period = activeSec * 2 + holdSec * 2; 
         const t = elapsed % period;
+        
         let pulse = 0;
-        if (t > holdSec && t < holdSec + activeSec) {
+        if (t <= holdSec) {
+            // 0〜1秒: インターバル（最小キープ）
+            pulse = 0.0;
+        } else if (t > holdSec && t <= holdSec + activeSec) {
+            // 1〜9秒: 吸う（8秒かけて拡大）
             pulse = (1.0 - Math.cos(((t - holdSec) / activeSec) * Math.PI)) * 0.5;
-        } else if (t >= holdSec + activeSec && t <= holdSec * 2 + activeSec) {
+        } else if (t > holdSec + activeSec && t <= holdSec * 2 + activeSec) {
+            // 9〜10秒: インターバル（最大キープ）
             pulse = 1.0;
-        } else if (t > holdSec * 2 + activeSec && t < period) {
+        } else {
+            // 10〜18秒: 吐く（8秒かけて縮小）
             pulse = (1.0 + Math.cos(((t - (holdSec * 2 + activeSec)) / activeSec) * Math.PI)) * 0.5;
         }
 
@@ -376,7 +395,6 @@
         renderer.render(scene, camera);
     }
 
-    // 初期化
     chakraData.forEach((c, i) => {
         const b = document.createElement('button'); 
         b.className = 'chakra-btn'; 
@@ -392,15 +410,38 @@
 
     function checkForUpdate() {
         if ('serviceWorker' in navigator) {
-            showToast("Checking update...");
+            showToast("アップデートを確認中...");
             navigator.serviceWorker.getRegistration().then(reg => {
-                if (reg) reg.update().then(() => { if (!reg.installing) showToast("Latest version."); });
+                if (reg) reg.update().then(() => { if (!reg.installing) showToast("最新バージョンです。"); });
             });
         }
     }
     
+    // Service Worker の登録
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').then(registration => {
+                console.log('SW registered:', registration);
+            }).catch(error => {
+                console.log('SW registration failed:', error);
+            });
+        });
+    }
+		    // --- ライフサイクル管理（バックグラウンド移行時の完全停止処理） ---
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && Tone.context.state === 'running') {
+            Tone.context.suspend();
+        } else if (!document.hidden && isTuning && Tone.context.state === 'suspended') {
+            Tone.context.resume();
+        }
+    });
+
+    window.addEventListener('pagehide', () => {
+        destroyOsc();
+        if (Tone.context.state === 'running') Tone.context.suspend();
+    });
+
     updateAudioAndUI();
 </script>
-
 </body>
 </html>
