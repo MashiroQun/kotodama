@@ -5,7 +5,6 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico'],
       
       manifest: {
         id: 'com.mashiro.kotodama-tuner',
@@ -13,9 +12,11 @@ export default defineConfig({
         short_name: '言霊Tuner',
         description: 'チャクラ調整用サウンド＆ビジュアルアイザー',
         start_url: './',
+        scope: '/',
         display: 'standalone',
         background_color: '#000000',
         theme_color: '#000000',
+        lang: 'ja',
         icons: [
           {
             src: 'icon-512.png',
@@ -35,13 +36,15 @@ export default defineConfig({
             src: 'screenshot-mobile.png',
             sizes: '750x1334',
             type: 'image/png',
-            form_factor: 'narrow'
+            form_factor: 'narrow',
+            label: 'モバイル画面'
           },
           {
             src: 'screenshot-desktop.png',
             sizes: '1920x1080',
             type: 'image/png',
-            form_factor: 'wide'
+            form_factor: 'wide',
+            label: 'デスクトップ画面'
           }
         ]
       }
