@@ -478,14 +478,21 @@
     }
     
 
-    // 究極の省電力（バックグラウンド移行時の完全停止）
+  // 究極の省電力（バックグラウンド移行時の完全停止）
     document.addEventListener('visibilitychange', () => {
+        // 生のコンテキストを取得
+        const rawCtx = Tone.getContext().rawContext;
+
         if (document.hidden) {
-            if (Tone.context.state === 'running') Tone.context.suspend();
+            // 安全なsuspend: プロパティの存在を確認してから実行
+            if (rawCtx && typeof rawCtx.suspend === 'function' && rawCtx.state === 'running') {
+                rawCtx.suspend().catch(e => console.warn("Suspend error:", e));
+            }
             stopLoop(); 
         } else {
-            if (isTuning && Tone.context.state === 'suspended') {
-                Tone.context.resume();
+            // 安全なresume
+            if (isTuning && rawCtx && typeof rawCtx.resume === 'function' && rawCtx.state === 'suspended') {
+                rawCtx.resume().catch(e => console.warn("Resume error:", e));
                 startLoop(); 
             }
         }
@@ -493,7 +500,11 @@
 
     window.addEventListener('pagehide', () => {
         destroyOsc();
-        if (Tone.context.state === 'running') Tone.context.suspend();
+        const rawCtx = Tone.getContext().rawContext;
+        // ページを閉じる際も安全に停止
+        if (rawCtx && typeof rawCtx.suspend === 'function' && rawCtx.state === 'running') {
+            rawCtx.suspend().catch(e => console.warn("Pagehide suspend error:", e));
+        }
     });
 
     updateAudioAndUI();
