@@ -1,5 +1,5 @@
 manifest: {
-  id: '/',                    // または 'com.kotodama.tuner' のような独自ID推奨
+  id: 'com.mashiro.kotodama-tuner',
   name: '言霊チューナー',
   short_name: '言霊Tuner',
   description: 'チャクラ調整用サウンド＆ビジュアルアイザー',
@@ -15,7 +15,7 @@ manifest: {
       purpose: 'any'
     },
     {
-      src: 'icon-512-maskable.png',
+      src: 'icon-512.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'maskable'
@@ -26,15 +26,13 @@ manifest: {
       src: 'screenshot-mobile.png',
       sizes: '750x1334',
       type: 'image/png',
-      form_factor: 'narrow',
-      label: 'モバイル画面'
+      form_factor: 'narrow'
     },
     {
       src: 'screenshot-desktop.png',
       sizes: '1920x1080',
       type: 'image/png',
-      form_factor: 'wide',
-      label: 'デスクトップ画面'
+      form_factor: 'wide'
     }
   ]
 }
