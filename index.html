@@ -182,7 +182,7 @@
         material = new THREE.ShaderMaterial({
             uniforms: { uTime: {value: 0}, uPulse: {value: 0}, uColor: {value: new THREE.Color(0xffffff)}, uChakraId: {value: 1}, uVisMode: {value: 2}, uOpacity: {value: 0} },
             vertexShader: `
-                precision mediump float;
+                precision lowp float;
                 uniform float uTime, uPulse, uChakraId, uVisMode;
                 attribute float aIndex;
                 void main() {
