@@ -462,13 +462,21 @@
         });
     }
 
+        // ▼ 究極の省電力（オーディオ＋3D描画の完全停止）
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden && Tone.context.state === 'running') {
-            Tone.context.suspend();
-        } else if (!document.hidden && isTuning && Tone.context.state === 'suspended') {
-            Tone.context.resume();
+        if (document.hidden) {
+            // 画面が隠れたら音を一時停止し、Three.jsの描画ループも完全に止める
+            if (Tone.context.state === 'running') Tone.context.suspend();
+            stopLoop(); 
+        } else {
+            // 画面に戻ってきた時、チューニング中であれば音と描画を再開する
+            if (isTuning && Tone.context.state === 'suspended') {
+                Tone.context.resume();
+                startLoop(); 
+            }
         }
     });
+
 
     window.addEventListener('pagehide', () => {
         destroyOsc();
