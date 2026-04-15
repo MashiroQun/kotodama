@@ -305,7 +305,7 @@
 
     const actionBtn = document.getElementById('action-btn');
 
-    async function stopTuning() {
+   async function stopTuning() {
         if (isStopping) return;
         isStopping = true;
         actionBtn.disabled = true;
@@ -313,19 +313,45 @@
         stopStartTime = performance.now();
 
         try {
+            // フェードアウト処理
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             env.triggerRelease();
             Tone.Destination.volume.rampTo(-60, 2.5);
 
+            // 3.2秒待機（フェードアウトが完全に終わるのを待つ）
             await new Promise(resolve => setTimeout(resolve, 3200));
 
+            // --- ここからが修正のキモ：安全なクリーンアップ ---
             stopLoop();
             destroyOsc();
-            if (Tone.context.state !== 'suspended') {
-            const context = Tone.getContext();
-            await context.rawContext?.suspend?.();
 
+            // AI推奨の「二段構え」でAudioContextを安全にスリープ
+            if (Tone.context.state !== 'suspended') {
+                const ctx = Tone.context;
+                if (ctx && typeof ctx.suspend === 'function') {
+                    // パターン1: Tone.js自体がsuspendを持っている場合
+                    await ctx.suspend();
+                } else if (ctx && ctx.rawContext && typeof ctx.rawContext.suspend === 'function') {
+                    // パターン2: 生のAudioContext側にsuspendがある場合
+                    await ctx.rawContext.suspend();
+                }
             }
+
+            // アプリの状態をリセット
+            isTuning = false;
+            isStopping = false; // 次の開始のためにフラグを下ろす
+            actionBtn.disabled = false;
+            updateAudioAndUI();
+            
+            console.log("Cleanup Success: Audio Bridge Suspended.");
+
+        } catch (e) {
+            console.error("Cleanup failed:", e);
+            // エラー時も最低限ボタンは復帰させる
+            isStopping = false;
+            actionBtn.disabled = false;
+        }
+    }
 
             if (renderer) {
                 renderer.dispose();
