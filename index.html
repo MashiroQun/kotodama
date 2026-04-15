@@ -171,6 +171,14 @@
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
+            // --- デバイスごとの音量キャリブレーション ---
+    const isWindows = /Windows/.test(navigator.userAgent);
+    
+    // Windows PC（i5-1235Uなど）は出力が強いため -12dB（約1/4）に設定
+    // iPhone / iPad / Android はそのまま (0)
+    Tone.Destination.volume.value = isWindows ? -12 : 0;
+
+
         // --- デバイス判定の強化 ---
         const isIPhone = /iPhone/.test(navigator.userAgent);
         const isIPad = /iPad/.test(navigator.userAgent) || 
@@ -314,7 +322,8 @@
             stopLoop();
             destroyOsc();
             if (Tone.context.state !== 'suspended') {
-                await Tone.context.rawContext.suspend();
+            const context = Tone.getContext();
+            await context.rawContext?.suspend?.();
 
             }
 
