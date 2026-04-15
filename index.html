@@ -321,14 +321,15 @@
             // 2. フェードアウト完了待ち
             await new Promise(resolve => setTimeout(resolve, 3200));
 
-            // 3. 楽器とレンダラーの破棄（リソース解放）
+            // 3. 楽器とループの停止
             stopLoop();
             destroyOsc();
 
+            // 4. 3Dレンダラーの破棄（リソース解放）
             if (renderer) {
                 renderer.dispose();
                 const container = document.getElementById('webgl-container');
-                if (container.contains(renderer.domElement)) {
+                if (container && container.contains(renderer.domElement)) {
                     container.removeChild(renderer.domElement);
                 }
                 renderer = null; 
@@ -336,13 +337,43 @@
                 scene = null;
             }
 
-            // 4. 【合理的解決】AudioContextの休止
-            // AIの指摘通り、直接「rawContext」の存在を確認してから叩く
-            const raw = Tone.context?.rawContext;
-            if (raw && typeof raw.suspend === 'function' && raw.state !== 'suspended') {
-                await raw.suspend();
-                console.log("Audio suspended via rawContext.");
+            // 5. 【AI推奨の解決策】AudioContextの休止
+            // 向こうのAIが指摘した「nativeContext」を安全に取得して実行する
+            const nativeContext = Tone.context?.rawContext || Tone.context;
+            
+            if (nativeContext && typeof nativeContext.suspend === 'function') {
+                await nativeContext.suspend();
+                console.log("Audio suspended via nativeContext.");
+            } else {
+                // 万が一suspendがない場合の予備策
+                Tone.Transport.stop();
             }
+
+        } catch (e) {
+            // ここでエラーを捕まえて、アプリが止まるのを防ぐ
+            console.error("Cleanup non-critical error:", e);
+        } finally {
+            // 6. 【最重要】何が起きても必ず「START」ボタンを復活させる
+            isTuning = false;
+            isStopping = false;
+            actionBtn.disabled = false;
+            actionBtn.innerText = "TUNING START";
+            
+            // UIの状態をリセット
+            document.getElementById('bonji-bg').style.opacity = '0.4';
+            document.getElementById('chakra-ring').style.transform = 'translate(-50%, -50%) scale(0.5)';
+            
+            const timerBtn = document.getElementById('btn-timer-display');
+            if (timerBtn) {
+                timerBtn.style.opacity = '1.0';
+                timerBtn.style.pointerEvents = 'auto';
+            }
+            
+            updateAudioAndUI();
+            console.log("System reset complete.");
+        }
+    }
+  
 
         } catch (e) {
             // ここを通ることで、エラーが起きてもブラウザをクラッシュさせない
@@ -351,8 +382,7 @@
             // 5. 【最終判決】何があっても必ずこの状態に戻す
             isTuning = false;
             isStopping = false;
-            actionBtn.disabled = false;
-            actionBtn.innerText = "TUNING START";
+            actionBtn.disabled = false;NG START";
             
             // UIとタイマーの復帰
             document.getElementById('bonji-bg').style.opacity = '0.4';
