@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
     <title>言霊チューナー</title>
 
-<link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
-<link rel="icon" href="./icon-512.png" type="image/png">
-<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+<link rel="icon" href="/icon-512.png" type="image/png">
+<link rel="manifest" href="/manifest.json">
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
@@ -444,15 +444,6 @@
         }
     }
     
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').then(registration => {
-                console.log('SW registered:', registration);
-            }).catch(error => {
-                console.log('SW registration failed:', error);
-            });
-        });
-    }
 
     // 究極の省電力（バックグラウンド移行時の完全停止）
     document.addEventListener('visibilitychange', () => {
