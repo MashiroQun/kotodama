@@ -217,7 +217,7 @@
                         pos = vec3(rc * cos(u), rc * sin(u) * sin(v), r * sin(v));
                     }
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-                    gl_PointSize = (2.5 + uPulse * 2.5) * (isOuter == 1.0 ? 0.7 : 1.3);
+                    gl_PointSize = (${isIPhone ? '2.2' : '2.5'} + uPulse * 2.5) * (isOuter == 1.0 ? 0.7 : 1.3);
                 }
             `,
             fragmentShader: `
