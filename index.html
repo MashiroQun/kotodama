@@ -102,7 +102,9 @@
     let timerDuration = 0; 
     let timerSessionStartTime = 0;
     const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
-    let timerStepIdx = 0;
+    
+    let lastTimerStr = ""; // ▼これを追加（最後に表示したタイマー文字列を記憶）
+
 
     // ▼ 修正①：デバイス別FPS制御（PC=60fps / iPad=30fps / スマホ=24fps）
     let TARGET_FPS = 60;
@@ -366,20 +368,28 @@
         
         if (!renderer || !material) return;
         
-        if (timerDuration > 0 && !isStopping) {
+        
+        }        if (timerDuration > 0 && !isStopping) {
             const elapsedSec = (now - timerSessionStartTime) / 1000;
             const totalSec = timerDuration * 60;
             const remaining = Math.max(0, totalSec - elapsedSec);
             
             const m = Math.floor(remaining / 60);
             const s = Math.floor(remaining % 60);
-            document.getElementById('btn-timer-display').innerText = m + ":" + (s < 10 ? "0" : "") + s;
+            const timerStr = m + ":" + (s < 10 ? "0" : "") + s;
+
+            // ▼ 修正：文字列が前回と違う場合（1秒に1回）だけDOMを更新する
+            if (timerStr !== lastTimerStr) {
+                document.getElementById('btn-timer-display').innerText = timerStr;
+                lastTimerStr = timerStr;
+            }
 
             if (remaining <= 0) {
                 stopTuning();
                 return;
             }
         }
+
 
         let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
