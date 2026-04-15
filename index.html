@@ -314,7 +314,8 @@
             stopLoop();
             destroyOsc();
             if (Tone.context.state !== 'suspended') {
-                await Tone.context.suspend();
+                await Tone.context.rawContext.suspend();
+
             }
 
             if (renderer) {
