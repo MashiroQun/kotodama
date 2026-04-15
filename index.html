@@ -1,53 +1,51 @@
 <!DOCTYPE html>
-
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=<meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
     <title>言霊チューナー</title>
 
-<link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
-<link rel="icon" href="/icon-512.png" type="image/png">
-<link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+    <link rel="icon" href="/icon-512.png" type="image/png">
+    <link rel="manifest" href="/manifest.json">
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-<style>
-    :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
-    html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
-    #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-    #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
-    #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
-    #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
-    #ui-layer > * { pointer-events: auto; }
-    header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
-    .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
-    .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
-    #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 30vh; }
-    .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1vh; }
-    .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1vh; line-height: 1; }
-    .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
-    .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
-    
-    #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; width: 100%; max-width: 400px; }
-    #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
-    #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5vh; }
-    .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
-    .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
-    #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 1.5vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 1.5vh; touch-action: manipulation; }
-    #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
-    #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-    .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
-    .toggle-btn:active { background: rgba(255,255,255,0.3); }
-    #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
-</style>
-
+    <style>
+        :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
+        #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
+        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
+        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+        #ui-layer > * { pointer-events: auto; }
+        header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
+        .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
+        .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
+        #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 30vh; }
+        .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1vh; }
+        .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1vh; line-height: 1; }
+        .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
+        .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
+        
+        #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; width: 100%; max-width: 400px; }
+        #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
+        #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5vh; }
+        .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
+        .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
+        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 1.5vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 1.5vh; touch-action: manipulation; }
+        #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
+        #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
+        .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
+        .toggle-btn:active { background: rgba(255,255,255,0.3); }
+        #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
+    </style>
 </head>
 <body>
     <div id="toast-msg"></div>
@@ -83,13 +81,13 @@
 
 <script>
     const chakraData = [
-        { id: 1, kanji: "地", yomi: "ち",     on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
-        { id: 2, kanji: "海", yomi: "うみ",   on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
-        { id: 3, kanji: "陽", yomi: "よう",   on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",      meaning: "火 / 意志 /活力 / みぞおち" },
-        { id: 4, kanji: "和", yomi: "わ",     on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",     meaning: "風 / 調和 / 愛 / 胸" },
+        { id: 1, kanji: "地", yomi: "ち",   on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
+        { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
+        { id: 3, kanji: "陽", yomi: "よう", on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",      meaning: "火 / 意志 /活力 / みぞおち" },
+        { id: 4, kanji: "和", yomi: "わ",   on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",     meaning: "風 / 調和 / 愛 / 胸" },
         { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏",      meaning: "空 / 表現 / 空間 / 喉" },
         { id: 6, kanji: "理", yomi: "ことわり",on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌",     meaning: "識 / 直感 / 叡智 / 眉間" },
-        { id: 7, kanji: "宙", yomi: "そら",   on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
+        { id: 7, kanji: "宙", yomi: "そら", on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
     ];
 
     const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
@@ -102,9 +100,8 @@
     let timerSessionStartTime = 0;
     const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
     let timerStepIdx = 0;
-    let lastTimerStr = ""; // バッテリー対策（画面の無駄な更新を防ぐ）
+    let lastTimerStr = ""; 
 
-    // デバイス別FPS制御（PC=60fps / iPad=30fps / スマホ=24fps）
     let TARGET_FPS = 60;
     const ua = navigator.userAgent.toLowerCase();
     const isSmartPhone = /iphone|ipod|android.*mobile|windows.*phone/.test(ua);
@@ -122,7 +119,7 @@
     }
 
     function cycleTimer() {
-        if (isTuning) return; // ※音が鳴っている間はタイマー変更をロック（仕様）
+        if (isTuning) return; 
         timerStepIdx = (timerStepIdx + 1) % timerSteps.length;
         timerDuration = timerSteps[timerStepIdx];
         updateTimerDisplay();
@@ -133,7 +130,6 @@
         btn.innerText = timerDuration === 0 ? "TIMER: OFF" : "TIMER: " + timerDuration + "分";
     }
 
-    // --- Audio chain (スマホ最適化版) ---
     Tone.context.lookAhead = 0.5; 
     Tone.context.latencyHint = "playback";
 
@@ -161,7 +157,7 @@
 
     let renderer, scene, camera, particleSystem, material;
 
-        function initThree() {
+    function initThree() {
         if (renderer) return;
         const container = document.getElementById('webgl-container');
         scene = new THREE.Scene();
@@ -171,27 +167,17 @@
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-            // --- デバイスごとの音量キャリブレーション ---
-    const isWindows = /Windows/.test(navigator.userAgent);
-    
-    // Windows PC（i5-1235Uなど）は出力が強いため -12dB（約1/4）に設定
-    // iPhone / iPad / Android はそのまま (0)
-    Tone.Destination.volume.value = isWindows ? -12 : 0;
+        const isWindows = /Windows/.test(navigator.userAgent);
+        Tone.Destination.volume.value = isWindows ? -12 : 0;
 
-
-        // --- デバイス判定の強化 ---
         const isIPhone = /iPhone/.test(navigator.userAgent);
-        const isIPad = /iPad/.test(navigator.userAgent) || 
-                       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // M3 iPad対策
+        const isM3IPad = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
         let count, pixelRatio;
-
         if (isIPhone) {
-            // ★テスト用設定（iPhoneのみ適用）
             count = 230;
             pixelRatio = 0.4;
         } else {
-            // ★黄金比維持（iPad / PC）
             count = 250;
             pixelRatio = 0.5;
         }
@@ -231,8 +217,6 @@
                         pos = vec3(rc * cos(u), rc * sin(u) * sin(v), r * sin(v));
                     }
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-                    
-                    // サイズは一切補完せず 2.5 のまま固定
                     gl_PointSize = (2.5 + uPulse * 2.5) * (isOuter == 1.0 ? 0.7 : 1.3);
                 }
             `,
@@ -256,8 +240,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
     }
-
-
 
     function getFreq() {
         const data = chakraData[currentChakraIndex];
@@ -305,7 +287,8 @@
 
     const actionBtn = document.getElementById('action-btn');
 
-  async function stopTuning() {
+    // ★ 修正版 stopTuning 関数 (一本化)
+    async function stopTuning() {
         if (isStopping) return;
         isStopping = true;
         actionBtn.disabled = true;
@@ -313,89 +296,69 @@
         stopStartTime = performance.now();
 
         try {
-            // 1. フェードアウト（音量を下げる）
+            // 1. 音のフェードアウト
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             env.triggerRelease();
             Tone.Destination.volume.rampTo(-60, 2.5);
 
-            // 2. フェードアウト完了待ち
-            await new Promise(resolve => setTimeout(resolve, 3200));
+            // 2. 少し待つ（リリース時間に合わせる）
+            await new Promise(resolve => setTimeout(resolve, 2800));
 
-            // 3. 楽器とループの停止
+            // 3. 音源とループ停止
             stopLoop();
             destroyOsc();
 
-            // 4. 3Dレンダラーの破棄（リソース解放）
+            // 4. Three.js リソース解放
             if (renderer) {
                 renderer.dispose();
                 const container = document.getElementById('webgl-container');
                 if (container && container.contains(renderer.domElement)) {
                     container.removeChild(renderer.domElement);
                 }
-                renderer = null; 
-                material = null; 
+                renderer = null;
+                material = null;
                 scene = null;
+                particleSystem = null;
             }
 
-            // 5. 【AI推奨の解決策】AudioContextの休止
-            // 向こうのAIが指摘した「nativeContext」を安全に取得して実行する
-            const nativeContext = Tone.context?.rawContext || Tone.context;
-            
-            if (nativeContext && typeof nativeContext.suspend === 'function') {
-                await nativeContext.suspend();
-                console.log("Audio suspended via nativeContext.");
+            // 5. 【重要】AudioContext の安全な suspend (Tone.js v14 準拠)
+            const context = Tone.getContext();
+            const rawContext = context.rawContext || context._context;
+
+            if (rawContext && typeof rawContext.suspend === 'function') {
+                if (rawContext.state === 'running') {
+                    await rawContext.suspend().catch(e => console.warn("Suspend failed:", e));
+                    console.log("AudioContext suspended successfully.");
+                }
             } else {
-                // 万が一suspendがない場合の予備策
+                console.warn("rawContext.suspend is not available");
                 Tone.Transport.stop();
             }
 
         } catch (e) {
-            // ここでエラーを捕まえて、アプリが止まるのを防ぐ
-            console.error("Cleanup non-critical error:", e);
+            console.error("Cleanup error:", e);
         } finally {
-            // 6. 【最重要】何が起きても必ず「START」ボタンを復活させる
+            // 必ず実行される後処理
             isTuning = false;
             isStopping = false;
             actionBtn.disabled = false;
             actionBtn.innerText = "TUNING START";
-            
-            // UIの状態をリセット
+
+            // UIリセット
             document.getElementById('bonji-bg').style.opacity = '0.4';
             document.getElementById('chakra-ring').style.transform = 'translate(-50%, -50%) scale(0.5)';
-            
+
             const timerBtn = document.getElementById('btn-timer-display');
             if (timerBtn) {
                 timerBtn.style.opacity = '1.0';
                 timerBtn.style.pointerEvents = 'auto';
             }
-            
+            updateTimerDisplay();
             updateAudioAndUI();
-            console.log("System reset complete.");
+            console.log("Cleanup completed.");
         }
     }
-  
 
-        } catch (e) {
-            // ここを通ることで、エラーが起きてもブラウザをクラッシュさせない
-            console.error("Cleanup non-critical error:", e);
-        } finally {
-            // 5. 【最終判決】何があっても必ずこの状態に戻す
-            isTuning = false;
-            isStopping = false;
-            actionBtn.disabled = false;NG START";
-            
-            // UIとタイマーの復帰
-            document.getElementById('bonji-bg').style.opacity = '0.4';
-            document.getElementById('chakra-ring').style.transform = 'translate(-50%, -50%) scale(0.5)';
-            
-            const timerBtn = document.getElementById('btn-timer-display');
-            timerBtn.style.opacity = '1.0';
-            timerBtn.style.pointerEvents = 'auto';
-            
-            updateAudioAndUI();
-            console.log("Stop complete: System ready.");
-        }
-    }
     async function toggleTuning() {
         if (isStopping) return;
         if (!isTuning) {
@@ -404,12 +367,12 @@
             
             const timerBtn = document.getElementById('btn-timer-display');
             timerBtn.style.opacity = '0.5';
-            timerBtn.style.pointerEvents = 'none'; // ボタンを操作不可にロック
+            timerBtn.style.pointerEvents = 'none'; 
 
             if (Tone.context.state !== 'running') await Tone.start();
     
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.value = -3;
+            Tone.Destination.volume.value = /Windows/.test(navigator.userAgent) ? -12 : -3;
 
             initThree();
             createOsc(getFreq());
@@ -431,15 +394,12 @@
         rafId = requestAnimationFrame(loop);
         
         const now = performance.now();
-
-        // FPS間引き処理
         const elapsedSinceLastDraw = now - lastDrawTime;
         if (elapsedSinceLastDraw < FRAME_INTERVAL) return;
         lastDrawTime = now - (elapsedSinceLastDraw % FRAME_INTERVAL);
         
         if (!renderer || !material) return;
         
-        // タイマー処理（バッテリー対策で1秒に1回だけ画面書き換え）
         if (timerDuration > 0 && !isStopping) {
             const elapsedSec = (now - timerSessionStartTime) / 1000;
             const totalSec = timerDuration * 60;
@@ -520,38 +480,29 @@
         }
     }
     
-    // HTMLDocument.<anonymous> 内の該当箇所
+    // ★ 修正版 visibilitychange イベント
     document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        // 安全なsuspend呼び出し
-        const rawCtx = Tone.getContext().rawContext;
-        if (rawCtx && typeof rawCtx.suspend === 'function') {
-            rawCtx.suspend().catch(e => console.warn("Suspend error:", e));
+        const raw = Tone.getContext().rawContext;
+        if (document.hidden) {
+            if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
+                raw.suspend().catch(() => {});
+            }
+        } else {
+            if (raw && typeof raw.resume === 'function') {
+                raw.resume().catch(() => {});
+            }
         }
-        console.log("App suspended safely.");
-    } else {
-        // 復帰時も安全にresume
-        const rawCtx = Tone.getContext().rawContext;
-        if (rawCtx && typeof rawCtx.resume === 'function') {
-            rawCtx.resume().catch(e => console.warn("Resume error:", e));
-        }
-        console.log("App resumed safely.");
-    }
-});
-  
+    });
 
     window.addEventListener('pagehide', () => {
         destroyOsc();
-        const rawCtx = Tone.getContext().rawContext;
-        // ページを閉じる際も安全に停止
-        if (rawCtx && typeof rawCtx.suspend === 'function' && rawCtx.state === 'running') {
-            rawCtx.suspend().catch(e => console.warn("Pagehide suspend error:", e));
+        const raw = Tone.getContext().rawContext;
+        if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
+            raw.suspend().catch(() => {});
         }
     });
 
     updateAudioAndUI();
 </script>
-
-
 </body>
 </html>
