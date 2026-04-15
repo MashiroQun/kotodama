@@ -1,7 +1,7 @@
 {
   "name": "言霊チューナー",
   "short_name": "言霊Tuner",
-  "description": "チャクラ調整用サウンド＆ビジュアライザー",
+  "description": "チャクラ調整用サウンド＆ビジュアルアイザー",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#000000",
@@ -14,3 +14,4 @@
       "purpose": "any maskable"
     }
   ]
+}
