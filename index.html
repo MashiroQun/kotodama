@@ -19,13 +19,17 @@
 
     <style>
         :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
+        
+        /* 修正点: heightを 100dvh から calc(var(--vh, 1vh) * 100) に変更 */
+        html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
         
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
         #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
         
-        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100dvh; padding-top: calc(env(safe-area-inset-top, 5dvh) + 2dvh); padding-bottom: calc(env(safe-area-inset-bottom, 2dvh) + 1dvh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+        /* 修正点: heightを 100dvh から calc(var(--vh, 1vh) * 100) に変更 */
+        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 5dvh) + 2dvh); padding-bottom: calc(env(safe-area-inset-bottom, 2dvh) + 1dvh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+        
         #ui-layer > * { pointer-events: auto; }
         header { flex: 0 0 auto; text-align: center; margin-top: 1dvh; }
         .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
@@ -84,6 +88,19 @@
     </div>
 
 <script>
+    // --- 修正点: 高さを正確に計算するスクリプトを追加 ---
+    function setFillHeight() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    setFillHeight();
+    window.addEventListener('resize', setFillHeight);
+    window.addEventListener('orientationchange', () => {
+        setTimeout(setFillHeight, 100);
+        setTimeout(setFillHeight, 500); 
+    });
+    // ---------------------------------------------------
+
     const chakraData = [
         { id: 1, kanji: "地", yomi: "ち",       on: "ア", phonetic: "a", note: "C3", solfege: "ド",  color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",     meaning: "土 / 基盤 / 生命 / 会陰" },
         { id: 2, kanji: "海", yomi: "うみ",     on: "ウ", phonetic: "u", note: "D3", solfege: "レ",  color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",     meaning: "水 / 創造 / 感情 / 丹田" },
@@ -149,12 +166,11 @@
     Tone.context.lookAhead = 0.1;
     Tone.context.latencyHint = "playback";
 
-    // 変更点1: オーディオノードの変数を宣言だけにして、初期化は行わない
+    // オーディオノードの初期化を関数化
     let limiter, reverb, delay, lpf, hpf, env;
     let audioInitialized = false;
     let osc = null;
 
-    // 変更点2: 初期化処理を関数にまとめる
     function initAudio() {
         if (audioInitialized) return;
         limiter = new Tone.Limiter(-1).toDestination();
@@ -168,7 +184,7 @@
 
     function createOsc(freq) {
         destroyOsc();
-        if (!env) initAudio(); // 念のための安全策
+        if (!env) initAudio(); 
         osc = new Tone.Oscillator({ type: "triangle", frequency: freq, volume: -8 }).connect(env);
         osc.start();
     }
@@ -253,6 +269,7 @@
         scene.add(particleSystem);
     }
 
+    // ウィンドウリサイズ時もWebGLの描画領域を正しく更新する
     window.addEventListener('resize', () => {
         if (!renderer) return;
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -376,7 +393,7 @@
             timerEl.style.opacity = '0.5';
             timerEl.style.pointerEvents = 'none';
 
-            // 変更点3: ボタンが押されたこのタイミングでTone開始＆ノード作成を行う
+            // ボタンクリック時にTone開始とノード初期化を行う
             if (Tone.context.state !== 'running') {
                 await Tone.start();
             }
@@ -544,13 +561,6 @@
 
     updateAudioAndUI();
 
-    window.addEventListener('load', () => {
-        setTimeout(() => {
-            document.body.style.display = 'none';
-            document.body.offsetHeight; // 高さを再計算させる
-            document.body.style.display = '';
-        }, 150); 
-    });
 </script>
 </body>
 </html>
