@@ -19,11 +19,50 @@
 
     <style>
         :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100vh; height: 100dvh; position: fixed; top: 0; left: 0; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; -webkit-overflow-scrolling: touch; }
+        
+        /* iPadのUIバー見切れ対策：100svh と position: fixed で土台を完全に固定 */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100vh; 
+            height: 100svh; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Inter', sans-serif; 
+            font-weight: 100; 
+            overflow: hidden; 
+            touch-action: none; 
+        }
+        
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
         #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
-        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+        
+        /* iPadのUIバー見切れ対策：absoluteで親の100svhに完全追従させる */
+        #ui-layer { 
+            position: absolute; 
+            top: 0;
+            left: 0;
+            z-index: 3; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            align-items: center; 
+            width: 100%;
+            height: 100%; 
+            padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); 
+            padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); 
+            padding-left: 5%; 
+            padding-right: 5%; 
+            box-sizing: border-box; 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); 
+            pointer-events: none; 
+        }
+        
         #ui-layer > * { pointer-events: auto; }
         header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
         .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
@@ -102,21 +141,18 @@
     let timerStepIdx = 0;
     let lastTimerStr = "";
 
-    // --- デバイス判定 ---
     const ua = navigator.userAgent.toLowerCase();
     const isSmartPhone = /iphone|ipod|android.*mobile|windows.*phone/.test(ua);
     const isIPad = /ipad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isWindows = /Windows/.test(navigator.userAgent);
     const isIPhone = /iPhone/.test(navigator.userAgent);
 
-    // --- FPS制御（PC=60fps / iPad=30fps / スマホ=24fps）---
     let TARGET_FPS = 60;
     if (isSmartPhone) TARGET_FPS = 24;
     else if (isIPad) TARGET_FPS = 30;
     const FRAME_INTERVAL = 1000 / TARGET_FPS;
     let lastDrawTime = 0;
 
-    // --- BOOST制御（ON=通常音量 / OFF=-20dB、ヘッドフォン耳保護）---
     let boostOn = true;
     function getTargetVolume() {
         const base = isWindows ? -12 : -3;
@@ -144,8 +180,7 @@
         }
     }
 
-    // --- Audio chain ---
-    Tone.context.lookAhead = 0.1; // 0.5→0.1：START後の音の遅延を解消
+    Tone.context.lookAhead = 0.1;
     Tone.context.latencyHint = "playback";
 
     const limiter = new Tone.Limiter(-1).toDestination();
@@ -243,7 +278,6 @@
         scene.add(particleSystem);
     }
 
-    // resizeリスナーをトップレベルに1度だけ登録
     window.addEventListener('resize', () => {
         if (!renderer) return;
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -344,7 +378,7 @@
             actionBtn.disabled = false;
             actionBtn.innerText = "TUNING START";
 
-            lastTimerStr = ""; // セッション間でタイマー表示をリセット
+            lastTimerStr = ""; 
 
             document.getElementById('bonji-bg').style.opacity = '0.4';
             document.getElementById('chakra-ring').style.transform = 'translate(-50%, -50%) scale(0.5)';
@@ -536,6 +570,5 @@
 
     updateAudioAndUI();
 </script>
-
 </body>
 </html>
