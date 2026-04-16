@@ -19,22 +19,18 @@
 
     <style>
         :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
-        /* 修正点: position: fixed; を追加し、画面の揺れと計算ズレを防止 */
         html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
         
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-        /* 修正点: vh を dvh に変更 */
         #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
         #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
         
-        /* 修正点: 100dvh化とパディングのdvh化 */
         #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100dvh; padding-top: calc(env(safe-area-inset-top, 5dvh) + 2dvh); padding-bottom: calc(env(safe-area-inset-bottom, 2dvh) + 1dvh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
         #ui-layer > * { pointer-events: auto; }
         header { flex: 0 0 auto; text-align: center; margin-top: 1dvh; }
         .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
         .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
         
-        /* 修正点: min-heightを0にしてFlexboxの圧迫を回避 */
         #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 0; }
         .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1dvh; }
         .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(80px, 25dvh, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1dvh; line-height: 1; }
@@ -89,12 +85,12 @@
 
 <script>
     const chakraData = [
-        { id: 1, kanji: "地", yomi: "ち",       on: "ア", phonetic: "a", note: "C3", solfege: "ド",  color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
-        { id: 2, kanji: "海", yomi: "うみ",     on: "ウ", phonetic: "u", note: "D3", solfege: "レ",  color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
-        { id: 3, kanji: "陽", yomi: "よう",     on: "オ", phonetic: "o", note: "E3", solfege: "ミ",  color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",      meaning: "火 / 意志 /活力 / みぞおち" },
-        { id: 4, kanji: "和", yomi: "わ",       on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",      meaning: "風 / 調和 / 愛 / 胸" },
-        { id: 5, kanji: "響", yomi: "ひびき",   on: "エ", phonetic: "e", note: "G3", solfege: "ソ",  color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏",      meaning: "空 / 表現 / 空間 / 喉" },
-        { id: 6, kanji: "理", yomi: "ことわり",  on: "イ", phonetic: "i", note: "A3", solfege: "ラ",  color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌",      meaning: "識 / 直感 / 叡智 / 眉間" },
+        { id: 1, kanji: "地", yomi: "ち",       on: "ア", phonetic: "a", note: "C3", solfege: "ド",  color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",     meaning: "土 / 基盤 / 生命 / 会陰" },
+        { id: 2, kanji: "海", yomi: "うみ",     on: "ウ", phonetic: "u", note: "D3", solfege: "レ",  color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",     meaning: "水 / 創造 / 感情 / 丹田" },
+        { id: 3, kanji: "陽", yomi: "よう",     on: "オ", phonetic: "o", note: "E3", solfege: "ミ",  color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",     meaning: "火 / 意志 /活力 / みぞおち" },
+        { id: 4, kanji: "和", yomi: "わ",       on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",     meaning: "風 / 調和 / 愛 / 胸" },
+        { id: 5, kanji: "響", yomi: "ひびき",   on: "エ", phonetic: "e", note: "G3", solfege: "ソ",  color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏",     meaning: "空 / 表現 / 空間 / 喉" },
+        { id: 6, kanji: "理", yomi: "ことわり",  on: "イ", phonetic: "i", note: "A3", solfege: "ラ",  color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌",     meaning: "識 / 直感 / 叡智 / 眉間" },
         { id: 7, kanji: "宙", yomi: "そら",     on: "ン", phonetic: "m", note: "B3", solfege: "シ",  color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽",  meaning: "(吽) / 統合 / 超越 / 頭頂" }
     ];
 
@@ -153,17 +149,26 @@
     Tone.context.lookAhead = 0.1;
     Tone.context.latencyHint = "playback";
 
-    const limiter = new Tone.Limiter(-1).toDestination();
-    const reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
-    const delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
-    const lpf = new Tone.Filter({ frequency: 8000, type: "lowpass", rolloff: -12 }).connect(delay);
-    const hpf = new Tone.Filter({ frequency: 150, type: "highpass", rolloff: -24 }).connect(lpf);
-    const env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(hpf);
-
+    // 変更点1: オーディオノードの変数を宣言だけにして、初期化は行わない
+    let limiter, reverb, delay, lpf, hpf, env;
+    let audioInitialized = false;
     let osc = null;
+
+    // 変更点2: 初期化処理を関数にまとめる
+    function initAudio() {
+        if (audioInitialized) return;
+        limiter = new Tone.Limiter(-1).toDestination();
+        reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
+        delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
+        lpf = new Tone.Filter({ frequency: 8000, type: "lowpass", rolloff: -12 }).connect(delay);
+        hpf = new Tone.Filter({ frequency: 150, type: "highpass", rolloff: -24 }).connect(lpf);
+        env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(hpf);
+        audioInitialized = true;
+    }
 
     function createOsc(freq) {
         destroyOsc();
+        if (!env) initAudio(); // 念のための安全策
         osc = new Tone.Oscillator({ type: "triangle", frequency: freq, volume: -8 }).connect(env);
         osc.start();
     }
@@ -371,7 +376,11 @@
             timerEl.style.opacity = '0.5';
             timerEl.style.pointerEvents = 'none';
 
-            if (Tone.context.state !== 'running') await Tone.start();
+            // 変更点3: ボタンが押されたこのタイミングでTone開始＆ノード作成を行う
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+            initAudio();
 
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             Tone.Destination.volume.value = getTargetVolume();
@@ -535,7 +544,6 @@
 
     updateAudioAndUI();
 
-    // 修正点: 念のための強制リフローハック (初回読み込み時のSafariの描画ズレ対策)
     window.addEventListener('load', () => {
         setTimeout(() => {
             document.body.style.display = 'none';
