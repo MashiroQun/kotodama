@@ -20,12 +20,15 @@
     <style>
         :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
         
-        /* 修正ポイント：100svh にすることで iPad Safari の初期計算バグを回避 */
+        /* 根本原因の解決：高さを単位(vh)ではなく、画面枠(fixed)への固定で決定する */
         html, body { 
             margin: 0; 
             padding: 0; 
             width: 100%; 
-            height: 100svh; 
+            height: 100%; /* パーセント指定で親要素（ウィンドウ）に追従 */
+            position: fixed; /* 画面枠に完全固定し、Safariのバウンスや計算ズレを封じる */
+            top: 0; 
+            left: 0; 
             background-color: var(--bg-color); 
             color: var(--text-color); 
             font-family: 'Inter', sans-serif; 
@@ -37,7 +40,28 @@
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
         #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
-        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+        
+        /* UIレイヤー：heightを使わず、topとbottomを指定して上下に引っ張り、固定する */
+        #ui-layer { 
+            position: absolute; 
+            top: 0;
+            bottom: 0; /* 底辺を画面の最下部にピン留め */
+            left: 0;
+            right: 0;
+            z-index: 3; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); 
+            padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); 
+            padding-left: 5%; 
+            padding-right: 5%; 
+            box-sizing: border-box; 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); 
+            pointer-events: none; 
+        }
+        
         #ui-layer > * { pointer-events: auto; }
         header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
         .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
@@ -116,21 +140,18 @@
     let timerStepIdx = 0;
     let lastTimerStr = "";
 
-    // --- デバイス判定 ---
     const ua = navigator.userAgent.toLowerCase();
     const isSmartPhone = /iphone|ipod|android.*mobile|windows.*phone/.test(ua);
     const isIPad = /ipad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isWindows = /Windows/.test(navigator.userAgent);
     const isIPhone = /iPhone/.test(navigator.userAgent);
 
-    // --- FPS制御 ---
     let TARGET_FPS = 60;
     if (isSmartPhone) TARGET_FPS = 24;
     else if (isIPad) TARGET_FPS = 30;
     const FRAME_INTERVAL = 1000 / TARGET_FPS;
     let lastDrawTime = 0;
 
-    // --- BOOST制御 ---
     let boostOn = true;
     function getTargetVolume() {
         const base = isWindows ? -12 : -3;
@@ -160,7 +181,6 @@
         }
     }
 
-    // --- Audio chain ---
     Tone.context.lookAhead = 0.1;
     Tone.context.latencyHint = "playback";
 
