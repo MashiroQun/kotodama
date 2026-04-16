@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -9,43 +10,45 @@
     <meta name="apple-mobile-web-app-title" content="言霊チューナー">
     <title>言霊チューナー</title>
 
-    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
-    <link rel="icon" href="/icon-512.png" type="image/png">
-    <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#000000">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+```
+<link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+<link rel="icon" href="/icon-512.png" type="image/png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+Siddham&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    <style>
-        :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
-        #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
-        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
-        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
-        #ui-layer > * { pointer-events: auto; }
-        header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
-        .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
-        .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
-        #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 30vh; }
-        .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1vh; }
-        .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1vh; line-height: 1; }
-        .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
-        .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
-        
-        #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; width: 100%; max-width: 400px; }
-        #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
-        #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5vh; }
-        .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
-        .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
-        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 1.5vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 1.5vh; touch-action: manipulation; }
-        #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
-        #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-        .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
-        .toggle-btn:active { background: rgba(255,255,255,0.3); }
-        #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
-    </style>
+<style>
+    :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
+    #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+    #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45vh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
+    #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
+    #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: 100%; padding-top: calc(env(safe-area-inset-top, 5vh) + 2vh); padding-bottom: calc(env(safe-area-inset-bottom, 2vh) + 1vh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+    #ui-layer > * { pointer-events: auto; }
+    header { flex: 0 0 auto; text-align: center; margin-top: 1vh; }
+    .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
+    .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
+    #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 30vh; }
+    .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1vh; }
+    .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(100px, 30vw, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1vh; line-height: 1; }
+    .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
+    .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
+    #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; width: 100%; max-width: 400px; }
+    #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5vh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
+    #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5vh; }
+    .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
+    .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
+    #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 1.5vh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 1.5vh; touch-action: manipulation; }
+    #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
+    #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
+    .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2vh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
+    .toggle-btn:active { background: rgba(255,255,255,0.3); }
+    #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
+</style>
+```
+
 </head>
 <body>
     <div id="toast-msg"></div>
@@ -72,22 +75,23 @@
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
-            <div style="display: flex; justify-content: center; width: 100%; gap: 10px; margin-top: 4vh;">
+            <div style="display: flex; justify-content: center; width: 100%; gap: 2%; margin-top: 4vh;">
                 <button id="btn-check-update" class="toggle-btn" style="flex: 1;" onclick="checkForUpdate()">UPDATE</button>
                 <button id="btn-timer-display" class="toggle-btn" style="flex: 1; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3);" onclick="cycleTimer()">TIMER: OFF</button>
+                <button id="btn-boost" class="toggle-btn" style="flex: 1;">BOOST: ON</button>
             </div>
         </div>
     </div>
 
 <script>
     const chakraData = [
-        { id: 1, kanji: "地", yomi: "ち",   on: "ア", phonetic: "a", note: "C3", solfege: "ド", color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
-        { id: 2, kanji: "海", yomi: "うみ", on: "ウ", phonetic: "u", note: "D3", solfege: "レ", color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
-        { id: 3, kanji: "陽", yomi: "よう", on: "オ", phonetic: "o", note: "E3", solfege: "ミ", color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",      meaning: "火 / 意志 /活力 / みぞおち" },
-        { id: 4, kanji: "和", yomi: "わ",   on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",     meaning: "風 / 調和 / 愛 / 胸" },
-        { id: 5, kanji: "響", yomi: "ひびき", on: "エ", phonetic: "e", note: "G3", solfege: "ソ", color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏",      meaning: "空 / 表現 / 空間 / 喉" },
-        { id: 6, kanji: "理", yomi: "ことわり",on: "イ", phonetic: "i", note: "A3", solfege: "ラ", color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌",     meaning: "識 / 直感 / 叡智 / 眉間" },
-        { id: 7, kanji: "宙", yomi: "そら", on: "ン", phonetic: "m", note: "B3", solfege: "シ", color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽", meaning: "(吽) / 統合 / 超越 / 頭頂" }
+        { id: 1, kanji: "地", yomi: "ち",       on: "ア", phonetic: "a", note: "C3", solfege: "ド",  color: 0xFF3333, strColor: "#FF3333", bonji: "𑖀",      meaning: "土 / 基盤 / 生命 / 会陰" },
+        { id: 2, kanji: "海", yomi: "うみ",     on: "ウ", phonetic: "u", note: "D3", solfege: "レ",  color: 0xFF8C00, strColor: "#FF8C00", bonji: "𑖪",      meaning: "水 / 創造 / 感情 / 丹田" },
+        { id: 3, kanji: "陽", yomi: "よう",     on: "オ", phonetic: "o", note: "E3", solfege: "ミ",  color: 0xFFD700, strColor: "#FFD700", bonji: "𑖨",      meaning: "火 / 意志 /活力 / みぞおち" },
+        { id: 4, kanji: "和", yomi: "わ",       on: "オ", phonetic: "o", note: "F3", solfege: "ファ",color: 0x00CC66, strColor: "#00CC66", bonji: "𑖮",      meaning: "風 / 調和 / 愛 / 胸" },
+        { id: 5, kanji: "響", yomi: "ひびき",   on: "エ", phonetic: "e", note: "G3", solfege: "ソ",  color: 0x00BFFF, strColor: "#00BFFF", bonji: "𑖏",      meaning: "空 / 表現 / 空間 / 喉" },
+        { id: 6, kanji: "理", yomi: "ことわり",  on: "イ", phonetic: "i", note: "A3", solfege: "ラ",  color: 0x4169E1, strColor: "#4169E1", bonji: "𑖌",      meaning: "識 / 直感 / 叡智 / 眉間" },
+        { id: 7, kanji: "宙", yomi: "そら",     on: "ン", phonetic: "m", note: "B3", solfege: "シ",  color: 0xEE82EE, strColor: "#EE82EE", bonji: "𑖮𑖳𑖽",  meaning: "(吽) / 統合 / 超越 / 頭頂" }
     ];
 
     const solfeggioFreqs = [396, 417, 528, 639, 741, 852, 963];
@@ -96,20 +100,37 @@
     let tuneStartTime = 0; let shaderAccumulatedTime = 0; let lastRenderRealTime = 0; let rafId = null;
     let stopStartTime = 0;
 
-    let timerDuration = 0; 
+    let timerDuration = 0;
     let timerSessionStartTime = 0;
     const timerSteps = [0, 5, 10, 20, 30, 40, 50, 60];
     let timerStepIdx = 0;
-    let lastTimerStr = ""; 
+    let lastTimerStr = "";
 
-    let TARGET_FPS = 60;
+    // --- デバイス判定 ---
     const ua = navigator.userAgent.toLowerCase();
     const isSmartPhone = /iphone|ipod|android.*mobile|windows.*phone/.test(ua);
     const isIPad = /ipad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isWindows = /Windows/.test(navigator.userAgent);
+    const isIPhone = /iPhone/.test(navigator.userAgent);
+
+    // --- FPS制御（PC=60fps / iPad=30fps / スマホ=24fps）---
+    let TARGET_FPS = 60;
     if (isSmartPhone) TARGET_FPS = 24;
     else if (isIPad) TARGET_FPS = 30;
     const FRAME_INTERVAL = 1000 / TARGET_FPS;
     let lastDrawTime = 0;
+
+    // --- BOOST制御（ON=通常音量 / OFF=-20dB、ヘッドフォン耳保護）---
+    let boostOn = true;
+    function getTargetVolume() {
+        const base = isWindows ? -12 : -3;
+        return boostOn ? base : base - 20;
+    }
+
+    // --- DOM キャッシュ（ループ内でgetElementByIdを毎フレーム呼ばない）---
+    const bonjiEl = document.getElementById('bonji-bg');
+    const ringEl  = document.getElementById('chakra-ring');
+    const timerEl = document.getElementById('btn-timer-display');
 
     function showToast(msg) {
         const t = document.getElementById('toast-msg');
@@ -119,18 +140,18 @@
     }
 
     function cycleTimer() {
-        if (isTuning) return; 
+        if (isTuning) return;
         timerStepIdx = (timerStepIdx + 1) % timerSteps.length;
         timerDuration = timerSteps[timerStepIdx];
         updateTimerDisplay();
     }
 
     function updateTimerDisplay() {
-        const btn = document.getElementById('btn-timer-display');
-        btn.innerText = timerDuration === 0 ? "TIMER: OFF" : "TIMER: " + timerDuration + "分";
+        timerEl.innerText = timerDuration === 0 ? "TIMER: OFF" : "TIMER: " + timerDuration + "分";
     }
 
-    Tone.context.lookAhead = 0.5; 
+    // --- Audio chain ---
+    Tone.context.lookAhead = 0.1; // 0.5→0.1：START後の音の遅延を解消
     Tone.context.latencyHint = "playback";
 
     const limiter = new Tone.Limiter(-1).toDestination();
@@ -163,39 +184,35 @@
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.z = 400;
-        
+
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "low-power" });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        const isWindows = /Windows/.test(navigator.userAgent);
-        Tone.Destination.volume.value = isWindows ? -12 : 0;
-
-        const isIPhone = /iPhone/.test(navigator.userAgent);
-        const isM3IPad = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        let count, pixelRatio;
-        if (isIPhone) {
-            count = 230;
-            pixelRatio = 0.4;
-        } else {
-            count = 250;
-            pixelRatio = 0.5;
-        }
-
+        // isM3IPad 未使用変数を削除
+        // initThree内のvolume設定を削除（toggleTuning側で一元管理）
+        const count      = isIPhone ? 230 : 250;
+        const pixelRatio = isIPhone ? 0.4  : 0.5;
         renderer.setPixelRatio(pixelRatio);
         container.appendChild(renderer.domElement);
 
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(count * 3);
-        const indices = new Float32Array(count);
+        const indices   = new Float32Array(count);
         for (let i = 0; i < count; i++) indices[i] = i / count;
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('aIndex', new THREE.BufferAttribute(indices, 1));
+        geometry.setAttribute('aIndex',   new THREE.BufferAttribute(indices, 1));
 
         material = new THREE.ShaderMaterial({
-            uniforms: { uTime: {value: 0}, uPulse: {value: 0}, uColor: {value: new THREE.Color(0xffffff)}, uChakraId: {value: 1}, uVisMode: {value: 2}, uOpacity: {value: 0} },
+            uniforms: {
+                uTime:     { value: 0 },
+                uPulse:    { value: 0 },
+                uColor:    { value: new THREE.Color(0xffffff) },
+                uChakraId: { value: 1 },
+                uVisMode:  { value: 2 },
+                uOpacity:  { value: 0 }
+            },
             vertexShader: `
-                precision lowp float; 
+                precision lowp float;
                 uniform float uTime, uPulse, uChakraId, uVisMode;
                 attribute float aIndex;
                 void main() {
@@ -232,14 +249,15 @@
         });
         particleSystem = new THREE.Points(geometry, material);
         scene.add(particleSystem);
-
-        window.addEventListener('resize', () => {
-            if (!renderer) return;
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     }
+
+    // resizeリスナーをトップレベルに1度だけ登録（initThree内から移動・累積登録を防止）
+    window.addEventListener('resize', () => {
+        if (!renderer) return;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
     function getFreq() {
         const data = chakraData[currentChakraIndex];
@@ -251,7 +269,7 @@
         const data = chakraData[currentChakraIndex];
         document.getElementById('kanji-display').innerText = data.kanji;
         document.getElementById('yomi-display').innerText = data.yomi;
-        document.getElementById('bonji-bg').innerText = data.bonji;
+        bonjiEl.innerText = data.bonji;
         document.getElementById('on-display').innerText = data.on + " / [ " + data.phonetic + " ]";
         document.getElementById('meaning').innerText = data.meaning;
         document.documentElement.style.setProperty('--accent-color', data.strColor);
@@ -276,9 +294,9 @@
             document.getElementById('note-display').innerText = baseNote + " (" + data.solfege + ") / " + Math.round(freq) + "Hz";
         }
 
-        if (material) { 
-            material.uniforms.uColor.value.setHex(data.color); 
-            material.uniforms.uChakraId.value = data.id; 
+        if (material) {
+            material.uniforms.uColor.value.setHex(data.color);
+            material.uniforms.uChakraId.value = data.id;
         }
         if (isTuning && !isStopping && osc) {
             osc.frequency.rampTo(freq, 1.0);
@@ -287,7 +305,6 @@
 
     const actionBtn = document.getElementById('action-btn');
 
-    // ★ 修正版 stopTuning 関数 (一本化)
     async function stopTuning() {
         if (isStopping) return;
         isStopping = true;
@@ -296,19 +313,15 @@
         stopStartTime = performance.now();
 
         try {
-            // 1. 音のフェードアウト
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             env.triggerRelease();
             Tone.Destination.volume.rampTo(-60, 2.5);
 
-            // 2. 少し待つ（リリース時間に合わせる）
             await new Promise(resolve => setTimeout(resolve, 2800));
 
-            // 3. 音源とループ停止
             stopLoop();
             destroyOsc();
 
-            // 4. Three.js リソース解放
             if (renderer) {
                 renderer.dispose();
                 const container = document.getElementById('webgl-container');
@@ -321,41 +334,35 @@
                 particleSystem = null;
             }
 
-            // 5. 【重要】AudioContext の安全な suspend (Tone.js v14 準拠)
             const context = Tone.getContext();
             const rawContext = context.rawContext || context._context;
-
             if (rawContext && typeof rawContext.suspend === 'function') {
                 if (rawContext.state === 'running') {
                     await rawContext.suspend().catch(e => console.warn("Suspend failed:", e));
-                    console.log("AudioContext suspended successfully.");
                 }
             } else {
-                console.warn("rawContext.suspend is not available");
                 Tone.Transport.stop();
             }
 
         } catch (e) {
             console.error("Cleanup error:", e);
         } finally {
-            // 必ず実行される後処理
             isTuning = false;
             isStopping = false;
             actionBtn.disabled = false;
             actionBtn.innerText = "TUNING START";
 
-            // UIリセット
-            document.getElementById('bonji-bg').style.opacity = '0.4';
-            document.getElementById('chakra-ring').style.transform = 'translate(-50%, -50%) scale(0.5)';
+            lastTimerStr = ""; // セッション間でタイマー表示をリセット
 
-            const timerBtn = document.getElementById('btn-timer-display');
-            if (timerBtn) {
-                timerBtn.style.opacity = '1.0';
-                timerBtn.style.pointerEvents = 'auto';
+            bonjiEl.style.opacity = '0.4';
+            ringEl.style.transform = 'translate(-50%, -50%) scale(0.5)';
+
+            if (timerEl) {
+                timerEl.style.opacity = '1.0';
+                timerEl.style.pointerEvents = 'auto';
             }
             updateTimerDisplay();
             updateAudioAndUI();
-            console.log("Cleanup completed.");
         }
     }
 
@@ -364,15 +371,15 @@
         if (!isTuning) {
             isTuning = true;
             actionBtn.innerText = "TUNING STOP";
-            
-            const timerBtn = document.getElementById('btn-timer-display');
-            timerBtn.style.opacity = '0.5';
-            timerBtn.style.pointerEvents = 'none'; 
+
+            timerEl.style.opacity = '0.5';
+            timerEl.style.pointerEvents = 'none';
 
             if (Tone.context.state !== 'running') await Tone.start();
-    
+
+            // volume設定をここで一元管理（BOOST状態・デバイス両方を反映）
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.value = /Windows/.test(navigator.userAgent) ? -12 : -3;
+            Tone.Destination.volume.value = getTargetVolume();
 
             initThree();
             createOsc(getFreq());
@@ -388,29 +395,28 @@
 
     function startLoop() { if (!rafId) rafId = requestAnimationFrame(loop); }
     function stopLoop() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
-    
+
     function loop() {
         if (!isTuning) return;
         rafId = requestAnimationFrame(loop);
-        
+
         const now = performance.now();
         const elapsedSinceLastDraw = now - lastDrawTime;
         if (elapsedSinceLastDraw < FRAME_INTERVAL) return;
         lastDrawTime = now - (elapsedSinceLastDraw % FRAME_INTERVAL);
-        
+
         if (!renderer || !material) return;
-        
+
         if (timerDuration > 0 && !isStopping) {
             const elapsedSec = (now - timerSessionStartTime) / 1000;
-            const totalSec = timerDuration * 60;
-            const remaining = Math.max(0, totalSec - elapsedSec);
-            
+            const totalSec   = timerDuration * 60;
+            const remaining  = Math.max(0, totalSec - elapsedSec);
+
             const m = Math.floor(remaining / 60);
             const s = Math.floor(remaining % 60);
             const timerStr = m + ":" + (s < 10 ? "0" : "") + s;
-
             if (timerStr !== lastTimerStr) {
-                document.getElementById('btn-timer-display').innerText = timerStr;
+                timerEl.innerText = timerStr;
                 lastTimerStr = timerStr;
             }
 
@@ -422,12 +428,12 @@
 
         let alpha = isStopping ? Math.max(0, 1.0 - (now - stopStartTime) / 2000) : 1.0;
         const elapsed = (now - tuneStartTime) * 0.001;
-        
-        const halfBreath = breathMode === 0 ? 4.0 : 8.0; 
-        const holdSec = 1.0;
-        const period = halfBreath * 2 + holdSec * 2; 
-        const t = elapsed % period;
-        
+
+        const halfBreath = breathMode === 0 ? 4.0 : 8.0;
+        const holdSec    = 1.0;
+        const period     = halfBreath * 2 + holdSec * 2;
+        const t          = elapsed % period;
+
         let pulse = 0;
         if (t <= holdSec) {
             pulse = 0.0;
@@ -439,29 +445,51 @@
             pulse = (1.0 + Math.cos(((t - (holdSec * 2 + halfBreath)) / halfBreath) * Math.PI)) * 0.5;
         }
 
-        shaderAccumulatedTime += Math.min((now - lastRenderRealTime)*0.001, 0.1);
+        shaderAccumulatedTime += Math.min((now - lastRenderRealTime) * 0.001, 0.1);
         lastRenderRealTime = now;
-        material.uniforms.uTime.value = shaderAccumulatedTime;
-        material.uniforms.uPulse.value = pulse;
+        material.uniforms.uTime.value    = shaderAccumulatedTime;
+        material.uniforms.uPulse.value   = pulse;
         material.uniforms.uOpacity.value = 0.6 * alpha;
-        
-        document.getElementById('bonji-bg').style.opacity = (0.3 + pulse * 0.5) * alpha;
-        document.getElementById('chakra-ring').style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
+
+        bonjiEl.style.opacity  = (0.3 + pulse * 0.5) * alpha;
+        ringEl.style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
         renderer.render(scene, camera);
     }
 
     chakraData.forEach((c, i) => {
-        const b = document.createElement('button'); 
-        b.className = 'chakra-btn'; 
+        const b = document.createElement('button');
+        b.className = 'chakra-btn';
         b.innerText = c.id;
         b.onclick = () => { currentChakraIndex = i; updateAudioAndUI(); };
         document.getElementById('chakra-selector').appendChild(b);
     });
 
     actionBtn.onclick = toggleTuning;
-    document.getElementById('btn-vis').onclick = () => { visMode = (visMode + 1) % 3; document.getElementById('btn-vis').innerText = ['VIS: 2D','VIS: 3D','VIS: 統合3D'][visMode]; if(material) material.uniforms.uVisMode.value = visMode; };
-    document.getElementById('btn-tune').onclick = () => { tuningMode = (tuningMode + 1) % 3; document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode]; updateAudioAndUI(); };
-    document.getElementById('btn-breath').onclick = () => { breathMode = (breathMode + 1) % 2; document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode]; };
+
+    document.getElementById('btn-vis').onclick = () => {
+        visMode = (visMode + 1) % 3;
+        document.getElementById('btn-vis').innerText = ['VIS: 2D','VIS: 3D','VIS: 統合3D'][visMode];
+        if (material) material.uniforms.uVisMode.value = visMode;
+    };
+    document.getElementById('btn-tune').onclick = () => {
+        tuningMode = (tuningMode + 1) % 3;
+        document.getElementById('btn-tune').innerText = ['TUNE: 基本','TUNE: +1','TUNE: ソルフェ'][tuningMode];
+        updateAudioAndUI();
+    };
+    document.getElementById('btn-breath').onclick = () => {
+        breathMode = (breathMode + 1) % 2;
+        document.getElementById('btn-breath').innerText = ['呼吸: 8秒','呼吸: 16秒'][breathMode];
+    };
+
+    // BOOST: ON/OFF（ON=通常音量 / OFF=-20dB でヘッドフォン・イヤフォン使用時の耳を保護）
+    document.getElementById('btn-boost').onclick = () => {
+        boostOn = !boostOn;
+        document.getElementById('btn-boost').innerText = boostOn ? 'BOOST: ON' : 'BOOST: OFF';
+        if (isTuning) {
+            Tone.Destination.volume.cancelScheduledValues(Tone.now());
+            Tone.Destination.volume.rampTo(getTargetVolume(), 0.5);
+        }
+    };
 
     function checkForUpdate() {
         if ('serviceWorker' in navigator) {
@@ -479,8 +507,17 @@
             });
         }
     }
-    
-    // ★ 修正版 visibilitychange イベント
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').then(registration => {
+                console.log('SW registered:', registration);
+            }).catch(error => {
+                console.log('SW registration failed:', error);
+            });
+        });
+    }
+
     document.addEventListener('visibilitychange', () => {
         const raw = Tone.getContext().rawContext;
         if (document.hidden) {
@@ -504,5 +541,6 @@
 
     updateAudioAndUI();
 </script>
+
 </body>
 </html>
