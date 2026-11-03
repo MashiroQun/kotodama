@@ -4,6 +4,7 @@ const CACHE_NAME = 'kotodama-v3-offline';
 const ASSETS = [
   './',
   './index.html',
+  './voice-tuner.js',
   './manifest.json',
   './icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js',
