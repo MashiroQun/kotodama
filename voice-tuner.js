@@ -49,8 +49,8 @@
 
     const stride = 2;
     const rate = sampleRate / stride;
-    const minLag = Math.floor(rate / 900);
-    const maxLag = Math.min(Math.floor(rate / 80), 430);
+    const minLag = Math.floor(rate / 1100);
+    const maxLag = Math.min(Math.floor(rate / 60), 430);
     const length = Math.min(1000, Math.floor(input.length / stride) - maxLag - 1);
     if (length < 250) return null;
 
@@ -90,7 +90,7 @@
       ? Math.max(-1, Math.min(1, 0.5 * (left - right) / denominator))
       : 0;
     const frequency = rate / (chosen + correction);
-    return Number.isFinite(frequency) && frequency >= 80 && frequency <= 900 ? frequency : null;
+    return Number.isFinite(frequency) && frequency >= 60 && frequency <= 1100 ? frequency : null;
   }
 
   function freqToMidi(frequency) {
