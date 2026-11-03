@@ -88,6 +88,8 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(labels.notation, 'solfege');
   frames.shift()(1100);
   assert.equal(el('voice-note').textContent, 'ラ3');
+  assert.equal(el('voice-note').style.webkitTextStrokeColor, '#7896FF',
+    'A3 should have a blue outline');
   assert.equal(el('voice-target-note').textContent, 'ラ3');
   assert.equal(noteIndex, 5);
   assert.equal(el('btn-guide').disabled, true, 'guide is unavailable in free mode');
