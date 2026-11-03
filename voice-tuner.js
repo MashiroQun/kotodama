@@ -17,6 +17,10 @@
   const levelFill = document.getElementById('voice-level-fill');
   const guideButton = document.getElementById('btn-guide');
   const sensitivityButton = document.getElementById('btn-mic-gain');
+  const modeButton = document.getElementById('btn-voice-mode');
+  const notationButton = document.getElementById('btn-voice-notation');
+  const octaveButton = document.getElementById('btn-voice-octave');
+  const targetModeLabel = document.getElementById('voice-target-mode-label');
   if (!button || !panel) return;
 
   let stream = null, context = null, source = null, inputGain = null, analyser = null;
@@ -24,9 +28,15 @@
   let recent = [];
   const inputSensitivity = [1, 4, 8, 16];
   let sensitivityIndex = 2; // 8x is the starting point; manual override for noisy devices.
-  let targetFrequency = 130.81278265;
-  let guideOsc = null, guideGain = null, guideUntil = 0, guideTimer = 0;
+  let targetFrequency = 130.81278265, baseTargetFrequency = 130.81278265;
+  let lastDetectedHz = null, currentGuideFrequency = null;
+  let mode = 'free', notation = 'solfege', octaveIndex = 0;
+  const octaves = ['auto', 2, 3, 4, 5];
   const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const SOLFEGE_NAMES = ['ド', 'ド♯', 'レ', 'レ♯', 'ミ', 'ファ', 'ファ♯', 'ソ', 'ソ♯', 'ラ', 'ラ♯', 'シ'];
+  const NATURAL_INDICES = { 0:0, 2:1, 4:2, 5:3, 7:4, 9:5, 11:6 };
+  let guideAudio = null, guideUrl = null, guideUntil = 0, guideTimer = 0;
+  let guidePreviousSessionType = null;
 
   // Lightweight YIN-style cumulative mean normalized difference.
   // Designed for a single singing/humming voice, not chords.
@@ -82,21 +92,81 @@
     return Number.isFinite(frequency) && frequency >= 80 && frequency <= 900 ? frequency : null;
   }
 
+  function freqToMidi(frequency) {
+    return 69 + 12 * Math.log2(frequency / 440);
+  }
+
+  function midiToFreq(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  function pitchClass(midi) {
+    return ((midi % 12) + 12) % 12;
+  }
+
   function getNoteName(frequency) {
     if (!Number.isFinite(frequency) || frequency <= 0) return '—';
-    const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
-    return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+    const midi = Math.round(freqToMidi(frequency));
+    const names = notation === 'solfege' ? SOLFEGE_NAMES : NAMES;
+    return names[pitchClass(midi)] + (Math.floor(midi / 12) - 1);
+  }
+
+  function getManualTarget() {
+    const baseMidi = Math.round(freqToMidi(baseTargetFrequency));
+    const noteClass = pitchClass(baseMidi);
+    let octave = octaves[octaveIndex];
+    if (octave === 'auto') {
+      octave = lastDetectedHz === null
+        ? 3
+        : Math.max(1, Math.min(7, Math.round((freqToMidi(lastDetectedHz) - noteClass) / 12) - 1));
+    }
+    return midiToFreq((octave + 1) * 12 + noteClass);
+  }
+
+  function showTarget(referenceHz) {
+    if (mode === 'free') {
+      targetModeLabel.textContent = '自動判定';
+      targetNote.textContent = referenceHz === null ? '—' : getNoteName(referenceHz);
+      targetFrequencyLabel.textContent = referenceHz === null
+        ? '声に合わせて音名・オクターブが変わります'
+        : referenceHz.toFixed(1) + ' Hz（最寄りの音）';
+    } else {
+      targetModeLabel.textContent = '目標音';
+      targetNote.textContent = getNoteName(referenceHz);
+      targetFrequencyLabel.textContent = referenceHz.toFixed(1) + ' Hz';
+    }
+  }
+
+  function updateControls() {
+    modeButton.textContent = mode === 'free' ? 'モード: フリー' : 'モード: 目標音';
+    notationButton.textContent = notation === 'solfege' ? '表示: ドレミ' : '表示: CDE';
+    octaveButton.textContent = '音域: ' + (octaves[octaveIndex] === 'auto' ? '自動' : octaves[octaveIndex]);
+    octaveButton.disabled = mode === 'free';
+    guideButton.disabled = !active || currentGuideFrequency === null || guideAudio !== null;
+    if (window.kotodamaSetVoiceLabels) {
+      window.kotodamaSetVoiceLabels(true, notation);
+    }
+  }
+
+  function updateSelectedButton(midi) {
+    if (!window.kotodamaSetVoiceSelection) return;
+    const selected = pitchClass(midi);
+    window.kotodamaSetVoiceSelection(
+      Object.prototype.hasOwnProperty.call(NATURAL_INDICES, selected)
+        ? NATURAL_INDICES[selected] : -1
+    );
   }
 
   function setTarget(frequency) {
     if (!Number.isFinite(frequency) || frequency <= 0) return;
-    targetFrequency = frequency;
-    targetNote.textContent = getNoteName(frequency);
-    targetFrequencyLabel.textContent = frequency.toFixed(1) + ' Hz';
-    if (!recent.length) {
-      needle.style.left = '50%';
-      direction.textContent = '目標音に合わせて声を出してください';
+    baseTargetFrequency = frequency;
+    if (mode === 'target') {
+      targetFrequency = getManualTarget();
+      currentGuideFrequency = targetFrequency;
+      showTarget(targetFrequency);
+      updateSelectedButton(Math.round(freqToMidi(baseTargetFrequency)));
     }
+    updateControls();
   }
 
   function updateInputLevel(input) {
@@ -110,33 +180,58 @@
   function showPitch(frequency) {
     if (frequency === null) {
       recent = [];
+      lastDetectedHz = null;
       noteLabel.textContent = '—';
       frequencyLabel.textContent = '声を出してください';
       centsLabel.textContent = '— cent';
       needle.style.left = '50%';
-      direction.textContent = '音程を検出中';
+      direction.textContent = mode === 'free' ? '声に合わせて音名を自動判定' : '目標音に合わせて声を出してください';
+      if (mode === 'free') {
+        currentGuideFrequency = null;
+        showTarget(null);
+        if (window.kotodamaSetVoiceSelection) window.kotodamaSetVoiceSelection(-1);
+      } else {
+        targetFrequency = getManualTarget();
+        currentGuideFrequency = targetFrequency;
+        showTarget(targetFrequency);
+      }
+      updateControls();
       return;
     }
+
     recent.push(frequency);
     if (recent.length > 4) recent.shift();
     const sorted = [...recent].sort((a, b) => a - b);
     const stable = sorted[Math.floor(sorted.length / 2)];
+    lastDetectedHz = stable;
+
+    if (mode === 'free') {
+      // Chromatic mode follows the closest note, including black-key pitches.
+      targetFrequency = midiToFreq(Math.round(freqToMidi(stable)));
+      updateSelectedButton(Math.round(freqToMidi(stable)));
+    } else {
+      targetFrequency = getManualTarget();
+      updateSelectedButton(Math.round(freqToMidi(baseTargetFrequency)));
+    }
+    currentGuideFrequency = targetFrequency;
+    showTarget(targetFrequency);
+
     const deltaCents = Math.round(1200 * Math.log2(stable / targetFrequency));
     noteLabel.textContent = getNoteName(stable);
     frequencyLabel.textContent = stable.toFixed(1) + ' Hz';
     centsLabel.textContent = (deltaCents > 0 ? '+' : '') + deltaCents + ' cent';
-    // ±50 cents displayed across a centered meter (6–94%).
     needle.style.left = (50 + Math.max(-50, Math.min(50, deltaCents)) * 0.88) + '%';
     if (Math.abs(deltaCents) <= 8) {
-      direction.textContent = '目標音とほぼ一致';
+      direction.textContent = mode === 'free' ? '音程が安定しています' : '目標音とほぼ一致';
       needle.style.background = '#53c7a9';
     } else if (Math.abs(deltaCents) > 50) {
-      direction.textContent = deltaCents < 0 ? '目標音より低い（目盛り範囲外）' : '目標音より高い（目盛り範囲外）';
+      direction.textContent = deltaCents < 0 ? '基準より低い（目盛り範囲外）' : '基準より高い（目盛り範囲外）';
       needle.style.background = '#fff';
     } else {
       direction.textContent = deltaCents < 0 ? 'もう少し高く' : 'もう少し低く';
       needle.style.background = '#fff';
     }
+    updateControls();
   }
 
   function stopGuide() {
