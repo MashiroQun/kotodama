@@ -90,7 +90,11 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(el('voice-note').textContent, 'ラ3');
   assert.equal(el('voice-target-note').textContent, 'ラ3');
   assert.equal(noteIndex, 5);
-  assert.equal(el('btn-guide').disabled, false);
+  assert.equal(el('btn-guide').disabled, true, 'guide is unavailable in free mode');
+  assert.equal(el('btn-guide').textContent, 'ガイド: 目標音のみ');
+  // Even a synthetic click on the disabled button must not trigger audio.
+  el('btn-guide').handlers.click();
+  assert.equal(audioPlayCalls, 0);
 
   el('btn-voice-notation').handlers.click();
   assert.equal(el('voice-note').textContent, 'A3');
@@ -98,6 +102,7 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(engine.mode, 'target');
   assert.equal(el('voice-target-note').textContent, 'C3');
   assert.equal(el('btn-voice-octave').disabled, false);
+  assert.equal(el('btn-guide').disabled, false, 'target guide should be available');
   el('btn-voice-octave').handlers.click();
   assert.equal(el('voice-target-note').textContent, 'C2');
 
@@ -116,5 +121,5 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(classes.has('voice-mode'), false);
   assert.equal(stoppedTracks, 1);
   assert.equal(labels.active, false);
-  console.log('PASS: free/target switching, octave, solfege/letters, guide WAV & session restore');
+  console.log('PASS: free guide disabled, target guide enabled, octave, solfege/letters, guide WAV & session restore');
 })().catch(e => { console.error(e); process.exitCode = 1; });
