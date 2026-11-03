@@ -143,7 +143,10 @@
     notationButton.textContent = notation === 'solfege' ? '表示: ドレミ' : '表示: CDE';
     octaveButton.textContent = '音域: ' + (octaves[octaveIndex] === 'auto' ? '自動' : octaves[octaveIndex]);
     octaveButton.disabled = mode === 'free';
-    guideButton.disabled = !active || currentGuideFrequency === null || guideAudio !== null;
+    // Free mode tracks the voice automatically; guide tone is meaningful only with a fixed target.
+    guideButton.disabled = mode !== 'target' || !active ||
+      currentGuideFrequency === null || guideAudio !== null;
+    guideButton.textContent = mode === 'free' ? 'ガイド: 目標音のみ' : 'ガイド音を鳴らす';
     if ((active || starting) && appliedNotation !== notation && window.kotodamaSetVoiceLabels) {
       window.kotodamaSetVoiceLabels(true, notation);
       appliedNotation = notation;
@@ -283,11 +286,11 @@
       guidePreviousSessionType = null;
     }
     guideUntil = 0;
-    guideButton.disabled = !active || currentGuideFrequency === null;
+    guideButton.disabled = mode !== 'target' || !active || currentGuideFrequency === null;
   }
 
   function playGuide() {
-    if (!active || guideAudio || currentGuideFrequency === null) return;
+    if (!active || mode !== 'target' || guideAudio || currentGuideFrequency === null) return;
     guideButton.disabled = true;
     try {
       // WebKit may route audio through the handset receiver while the mic is live.
