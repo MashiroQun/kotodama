@@ -16,11 +16,14 @@
   const direction = document.getElementById('voice-direction');
   const levelFill = document.getElementById('voice-level-fill');
   const guideButton = document.getElementById('btn-guide');
+  const sensitivityButton = document.getElementById('btn-mic-gain');
   if (!button || !panel) return;
 
-  let stream = null, context = null, source = null, analyser = null;
+  let stream = null, context = null, source = null, inputGain = null, analyser = null;
   let samples = null, frameId = 0, lastScan = 0, active = false, starting = false;
   let recent = [];
+  const inputSensitivity = [1, 4, 8, 16];
+  let sensitivityIndex = 2; // 8x is the starting point; manual override for noisy devices.
   let targetFrequency = 130.81278265;
   let guideOsc = null, guideGain = null, guideUntil = 0, guideTimer = 0;
   const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -210,7 +213,9 @@
     cancelAnimationFrame(frameId);
     frameId = 0;
     if (source) { try { source.disconnect(); } catch (_) {} }
+    if (inputGain) { try { inputGain.disconnect(); } catch (_) {} }
     source = null;
+    inputGain = null;
     analyser = null;
     samples = null;
     if (stream) stream.getTracks().forEach(track => track.stop());
@@ -268,10 +273,13 @@
       if (!Context) throw new Error('Web Audioに対応していません');
       context = new Context();
       source = context.createMediaStreamSource(stream);
+      inputGain = context.createGain();
+      inputGain.gain.value = inputSensitivity[sensitivityIndex];
       analyser = context.createAnalyser();
       analyser.fftSize = 4096;
       analyser.smoothingTimeConstant = 0;
-      source.connect(analyser); // Never connect to destination: no feedback.
+      source.connect(inputGain);
+      inputGain.connect(analyser); // Never connect microphone audio to destination.
       samples = new Float32Array(analyser.fftSize);
       await context.resume();
       active = true;
@@ -279,7 +287,7 @@
       soundButton.disabled = true;
       button.textContent = 'VOICE: STOP';
       guideButton.disabled = false;
-      status.textContent = 'マイク入力中（録音・送信なし）';
+      status.textContent = 'マイク入力中（録音・送信なし）・感度 ×' + inputSensitivity[sensitivityIndex];
       showPitch(null);
       lastScan = 0;
       frameId = requestAnimationFrame(scan);
@@ -300,6 +308,15 @@
 
   button.addEventListener('click', () => { void (active ? stop() : start()); });
   guideButton.addEventListener('click', () => { void playGuide(); });
+  sensitivityButton.addEventListener('click', () => {
+    sensitivityIndex = (sensitivityIndex + 1) % inputSensitivity.length;
+    const value = inputSensitivity[sensitivityIndex];
+    sensitivityButton.textContent = '感度 ×' + value;
+    if (inputGain) inputGain.gain.value = value;
+    recent = [];
+    showPitch(null);
+    if (active) status.textContent = 'マイク感度 ×' + value + '（感度を上げると雑音も増えます）';
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && active) void stop();
   });
