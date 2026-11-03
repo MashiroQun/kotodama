@@ -21,6 +21,7 @@
   const modeButton = document.getElementById('btn-voice-mode');
   const notationButton = document.getElementById('btn-voice-notation');
   const octaveButton = document.getElementById('btn-voice-octave');
+  if (smoothingButton) smoothingButton.textContent = '追従: 安定';
   const targetModeLabel = document.getElementById('voice-target-mode-label');
   if (!button || !panel) return;
 
@@ -32,7 +33,7 @@
     { label: '標準', tau: 220, holdMs: 190, hysteresis: 10 },
     { label: '安定', tau: 450, holdMs: 330, hysteresis: 15 }
   ];
-  let responseIndex = 1;
+  let responseIndex = 2; // 安定 is the default; 敏感／標準 remain selectable.
   let smoothedMidi = null, selectedMidi = null, lastSmoothAt = 0, lastGoodPitchAt = 0;
   const inputSensitivity = [1, 4, 8, 16];
   let sensitivityIndex = 2; // 8x is the starting point; manual override for noisy devices.
