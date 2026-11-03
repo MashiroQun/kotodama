@@ -216,7 +216,7 @@
 
     // ★修正箇所：グローバルにあったToneの設定を削除し、全て initAudio 関数の中に移動しました。
 
-    let limiter, reverb, delay, lpf, hpf, env;
+    let limiter, reverb, delay, lpf, hpf, env, sessionVolume;
     let audioInitialized = false;
     let osc = null;
     let samplePlayer = null;
@@ -232,7 +232,9 @@
         Tone.context.lookAhead = 0.02;
         Tone.context.latencyHint = "interactive";
 
-        limiter = new Tone.Limiter(-1).toDestination();
+        // New output chain for each playback session. Do not reuse previous FX tails.
+        sessionVolume = new Tone.Volume(getTargetVolume()).toDestination();
+        limiter = new Tone.Limiter(-1).connect(sessionVolume);
         dryGain = new Tone.Gain(0).connect(limiter); // FXを通さない音源比較用
         reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
         delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
@@ -241,6 +243,17 @@
         env = new Tone.AmplitudeEnvelope({ attack: 0.25, decay: 0, sustain: 1, release: 0.30 }).connect(hpf);
         
         audioInitialized = true;
+    }
+
+    function disposeAudioChain() {
+        // Reverb/delay keep an internal tail: dispose all nodes before the next start.
+        for (const node of [env, hpf, lpf, delay, reverb, dryGain, limiter, sessionVolume]) {
+            if (node) {
+                try { node.dispose(); } catch (error) { console.warn('Audio cleanup:', error); }
+            }
+        }
+        env = hpf = lpf = delay = reverb = dryGain = limiter = sessionVolume = null;
+        audioInitialized = false;
     }
 
     // 220Hzの整数周期から短いループを一度だけ作り、Tone.Playerで繰り返す。
@@ -429,15 +442,15 @@
         stopStartTime = performance.now();
 
         try {
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            env.triggerRelease();
-            if (dryGain) dryGain.gain.rampTo(0, 0.25);
-            Tone.Destination.volume.rampTo(-60, 0.25);
+            if (env) env.triggerRelease();
+            if (dryGain) dryGain.gain.rampTo(0, 0.18);
+            if (sessionVolume) sessionVolume.volume.rampTo(-65, 0.22);
 
-            await new Promise(resolve => setTimeout(resolve, 320));
+            await new Promise(resolve => setTimeout(resolve, 290));
 
             stopLoop();
             destroyOsc();
+            disposeAudioChain();
 
             if (renderer) {
                 renderer.dispose();
@@ -451,19 +464,14 @@
                 particleSystem = null;
             }
 
-            const context = Tone.getContext();
-            const rawContext = context.rawContext || context._context;
-            if (rawContext && typeof rawContext.suspend === 'function') {
-                if (rawContext.state === 'running') {
-                    await rawContext.suspend().catch(e => console.warn("Suspend failed:", e));
-                }
-            } else {
-                Tone.Transport.stop();
-            }
-
+            // Keep the context running until iOS actually backgrounds the page.
+            // Avoid suspend/resume cycles on each sound change.
         } catch (e) {
             console.error("Cleanup error:", e);
         } finally {
+            stopLoop();
+            destroyOsc();
+            disposeAudioChain();
             isTuning = false;
             isStopping = false;
             actionBtn.disabled = false;
@@ -498,9 +506,8 @@
             }
             initAudio();
 
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.value = getTargetVolume();
-
+            // Only the current session volume controls playback loudness.
+            // No global Destination fade remains from the previous mode.
             initThree();
             createOsc(getFreq());
             updateAudioAndUI();
@@ -626,9 +633,8 @@
     document.getElementById('btn-boost').onclick = () => {
         boostOn = !boostOn;
         document.getElementById('btn-boost').innerText = boostOn ? 'BOOST: ON' : 'BOOST: OFF';
-        if (isTuning) {
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.rampTo(getTargetVolume(), 0.5);
+        if (isTuning && sessionVolume) {
+            sessionVolume.volume.rampTo(getTargetVolume(), 0.20);
         }
     };
 
@@ -677,6 +683,7 @@
     window.addEventListener('pagehide', () => {
         if (!audioInitialized) return; // ← 追加：まだスタート押してないなら無視
         destroyOsc();
+        disposeAudioChain();
         const raw = Tone.getContext().rawContext;
         if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
             raw.suspend().catch(() => {});
