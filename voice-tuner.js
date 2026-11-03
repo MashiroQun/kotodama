@@ -31,6 +31,7 @@
   let targetFrequency = 130.81278265, baseTargetFrequency = 130.81278265;
   let lastDetectedHz = null, currentGuideFrequency = null;
   let mode = 'free', notation = 'solfege', octaveIndex = 0;
+  let appliedNotation = null;
   const octaves = ['auto', 2, 3, 4, 5];
   const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
   const SOLFEGE_NAMES = ['ド', 'ド♯', 'レ', 'レ♯', 'ミ', 'ファ', 'ファ♯', 'ソ', 'ソ♯', 'ラ', 'ラ♯', 'シ'];
@@ -143,8 +144,9 @@
     octaveButton.textContent = '音域: ' + (octaves[octaveIndex] === 'auto' ? '自動' : octaves[octaveIndex]);
     octaveButton.disabled = mode === 'free';
     guideButton.disabled = !active || currentGuideFrequency === null || guideAudio !== null;
-    if ((active || starting) && window.kotodamaSetVoiceLabels) {
+    if ((active || starting) && appliedNotation !== notation && window.kotodamaSetVoiceLabels) {
       window.kotodamaSetVoiceLabels(true, notation);
+      appliedNotation = notation;
     }
   }
 
@@ -367,6 +369,7 @@
     panel.hidden = true;
     document.body.classList.remove('voice-mode');
     if (window.kotodamaSetVoiceLabels) window.kotodamaSetVoiceLabels(false);
+    appliedNotation = null;
     if (window.kotodamaSetVoiceSelection) {
       window.kotodamaSetVoiceSelection(NATURAL_INDICES[pitchClass(Math.round(freqToMidi(baseTargetFrequency)))]);
     }
@@ -431,11 +434,16 @@
       frameId = requestAnimationFrame(scan);
     } catch (error) {
       await releaseDevices();
-      panel.hidden = false;
+      panel.hidden = true;
+      document.body.classList.remove('voice-mode');
+      if (window.kotodamaSetVoiceLabels) window.kotodamaSetVoiceLabels(false);
+      appliedNotation = null;
+      document.querySelector('.title-sub').textContent = 'CHAKRA TUNER';
       const message = error.name === 'NotAllowedError'
-        ? 'マイクが許可されていません。ブラウザー設定を確認してください。'
-        : '開始できません: ' + (error.message || error.name);
+        ? 'マイクが許可されていません。Safariのマイク設定をご確認ください。'
+        : 'ボイスモードを開始できません: ' + (error.message || error.name);
       status.textContent = message;
+      if (window.showToast) window.showToast(message);
       guideButton.disabled = true;
       button.textContent = 'VOICE: START';
     } finally {
