@@ -143,7 +143,7 @@
     octaveButton.textContent = '音域: ' + (octaves[octaveIndex] === 'auto' ? '自動' : octaves[octaveIndex]);
     octaveButton.disabled = mode === 'free';
     guideButton.disabled = !active || currentGuideFrequency === null || guideAudio !== null;
-    if (window.kotodamaSetVoiceLabels) {
+    if ((active || starting) && window.kotodamaSetVoiceLabels) {
       window.kotodamaSetVoiceLabels(true, notation);
     }
   }
@@ -234,47 +234,87 @@
     updateControls();
   }
 
+  function generateGuideWav(frequency) {
+    // HTMLMediaElement playback has a separate iOS media audio route from the mic context.
+    // PCM16, mono, 24kHz, short envelope, plus a faint second harmonic for phone speakers.
+    const sampleRate = 24000, duration = 0.78;
+    const frames = Math.round(sampleRate * duration);
+    const buffer = new ArrayBuffer(44 + frames * 2);
+    const view = new DataView(buffer);
+    function tag(position, text) {
+      for (let i = 0; i < text.length; i++) view.setUint8(position + i, text.charCodeAt(i));
+    }
+    tag(0, 'RIFF'); view.setUint32(4, 36 + frames * 2, true);
+    tag(8, 'WAVE'); tag(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);  // PCM
+    view.setUint16(22, 1, true);  // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    tag(36, 'data'); view.setUint32(40, frames * 2, true);
+    for (let i = 0; i < frames; i++) {
+      const time = i / sampleRate;
+      const phase = 2 * Math.PI * frequency * time;
+      const envelope = Math.min(1, time / 0.03, (duration - time) / 0.12);
+      const sample = envelope * (0.43 * Math.sin(phase) + 0.12 * Math.sin(2 * phase));
+      view.setInt16(44 + 2 * i,
+        Math.round(Math.max(-1, Math.min(1, sample)) * 32767), true);
+    }
+    return new Blob([buffer], {type: 'audio/wav'});
+  }
+
   function stopGuide() {
     if (guideTimer) clearTimeout(guideTimer);
     guideTimer = 0;
-    if (guideOsc) {
-      try { guideOsc.stop(); } catch (_) {}
-      try { guideOsc.disconnect(); } catch (_) {}
+    if (guideAudio) {
+      try { guideAudio.pause(); guideAudio.removeAttribute('src'); guideAudio.load(); } catch (_) {}
+      guideAudio = null;
     }
-    if (guideGain) { try { guideGain.disconnect(); } catch (_) {} }
-    guideOsc = null;
-    guideGain = null;
+    if (guideUrl) { try { URL.revokeObjectURL(guideUrl); } catch (_) {} }
+    guideUrl = null;
+    if (guidePreviousSessionType !== null) {
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = guidePreviousSessionType;
+      } catch (_) {}
+      guidePreviousSessionType = null;
+    }
     guideUntil = 0;
-    guideButton.disabled = !active;
+    guideButton.disabled = !active || currentGuideFrequency === null;
   }
 
-  async function playGuide() {
-    if (!active || !context || guideOsc) return;
+  function playGuide() {
+    if (!active || guideAudio || currentGuideFrequency === null) return;
     guideButton.disabled = true;
     try {
-      if (context.state !== 'running') await context.resume();
-      const now = context.currentTime + 0.01;
-      guideOsc = context.createOscillator();
-      guideGain = context.createGain();
-      guideOsc.type = 'sine';
-      guideOsc.frequency.setValueAtTime(targetFrequency, now);
-      guideGain.gain.setValueAtTime(0, now);
-      guideGain.gain.linearRampToValueAtTime(0.095, now + 0.045);
-      guideGain.gain.setValueAtTime(0.095, now + 0.52);
-      guideGain.gain.linearRampToValueAtTime(0, now + 0.72);
-      guideOsc.connect(guideGain);
-      guideGain.connect(context.destination);
-      guideOsc.start(now);
-      guideOsc.stop(now + 0.74);
-      guideUntil = performance.now() + 950;
-      status.textContent = 'ガイド音を再生中（計測を一時停止）';
+      // WebKit may route audio through the handset receiver while the mic is live.
+      // This is a short user-initiated route switch; restore the prior type afterwards.
+      if (navigator.audioSession && 'type' in navigator.audioSession) {
+        try {
+          guidePreviousSessionType = navigator.audioSession.type;
+          navigator.audioSession.type = 'playback';
+        } catch (_) { guidePreviousSessionType = null; }
+      }
+      guideUrl = URL.createObjectURL(generateGuideWav(currentGuideFrequency));
+      guideAudio = new Audio(guideUrl);
+      guideAudio.volume = 1;
+      guideUntil = performance.now() + 1150;
+      status.textContent = 'ガイド音を再生中（マイク解析を一時停止）';
+      const playback = guideAudio.play(); // directly inside the button activation
+      if (playback && typeof playback.catch === 'function') {
+        playback.catch(error => {
+          stopGuide();
+          if (active) status.textContent = 'ガイド音を出力できません: ' + (error.message || error.name);
+        });
+      }
       guideTimer = setTimeout(() => {
         stopGuide();
-        if (active) status.textContent = 'マイク入力中';
-      }, 850);
+        if (active) status.textContent = 'マイク解析に復帰しました';
+      }, 1080);
     } catch (error) {
       stopGuide();
-      status.textContent = 'ガイド音を再生できません: ' + (error.message || error.name);
+      if (active) status.textContent = 'ガイド音を出力できません: ' + (error.message || error.name);
     }
   }
 
@@ -327,6 +367,9 @@
     panel.hidden = true;
     document.body.classList.remove('voice-mode');
     if (window.kotodamaSetVoiceLabels) window.kotodamaSetVoiceLabels(false);
+    if (window.kotodamaSetVoiceSelection) {
+      window.kotodamaSetVoiceSelection(NATURAL_INDICES[pitchClass(Math.round(freqToMidi(baseTargetFrequency)))]);
+    }
     document.querySelector('.title-sub').textContent = 'CHAKRA TUNER';
     status.textContent = 'マイク未使用';
     button.textContent = 'VOICE: START';
@@ -402,7 +445,32 @@
   }
 
   button.addEventListener('click', () => { void (active ? stop() : start()); });
-  guideButton.addEventListener('click', () => { void playGuide(); });
+  guideButton.addEventListener('click', () => { playGuide(); });
+  modeButton.addEventListener('click', () => {
+    if (guideAudio) stopGuide();
+    mode = mode === 'free' ? 'target' : 'free';
+    recent = [];
+    lastDetectedHz = null;
+    showPitch(null);
+    updateControls();
+  });
+  notationButton.addEventListener('click', () => {
+    notation = notation === 'solfege' ? 'letter' : 'solfege';
+    const previous = lastDetectedHz;
+    recent = [];
+    if (previous === null) showPitch(null);
+    else showPitch(previous);
+    updateControls();
+  });
+  octaveButton.addEventListener('click', () => {
+    if (mode !== 'target') return;
+    octaveIndex = (octaveIndex + 1) % octaves.length;
+    const previous = lastDetectedHz;
+    recent = [];
+    if (previous === null) showPitch(null);
+    else showPitch(previous);
+    updateControls();
+  });
   sensitivityButton.addEventListener('click', () => {
     sensitivityIndex = (sensitivityIndex + 1) % inputSensitivity.length;
     const value = inputSensitivity[sensitivityIndex];
@@ -416,6 +484,10 @@
     if (document.hidden && active) void stop();
   });
   window.addEventListener('pagehide', () => { if (active || stream) void stop(); });
-  window.kotodamaVoiceTuner = { estimatePitch, stop, setTarget, get active() { return active; } };
+  window.kotodamaVoiceTuner = {
+    estimatePitch, stop, setTarget, generateGuideWav,
+    get active() { return active; },
+    get mode() { return mode; }
+  };
   if (window.kotodamaGetVoiceTarget) setTarget(window.kotodamaGetVoiceTarget());
 })();
