@@ -261,3 +261,41 @@
 - **追従：安定**は初期値。敏感／標準／安定の3段階とマイク感度切替は維持。音程を認識しないという問題を解消するため、表示の遅延と入力の認識精度は分離して扱う。
 - `tests/voice-input-gate.test.cjs`を入力ゲート復帰防止・弱い声の一発目検出・表示だけの平滑化を検査する内容に変更。`tests/voice-modes.test.cjs`も初回フレームで音名を表示する仕様に戻す。マイクと音声出力、PWA更新を含む回帰検査7種類でPASS（ブラウザー非依存の模擬実行）。
 - Safari／iPad／AirPodsの実機測定ではないので、実際の視覚的な落ち着き、低い声の拾いやすさは引き続き実機で確認する。
+
+## iPad 64倍・ピンチ復帰・音色切替ノイズの研究と対策（2026-11-03）
+
+### 今回の実機フィードバック
+- iPadで4・8・32倍だけでは足りない場合があるため、マイク感度を**4・8・32・64倍**に拡張。初期8倍、操作循環8→32→64→4→8。前回復元した「小さな声も拾う」検出しきい値と「追従：安定」初期値はそのまま。
+- iOS Safari／ホーム画面PWAで、まれにページ全体が拡大し、以前の拡大禁止仕様では戻せない場合があった。今回は**ピンチ拡大・縮小を明示的に許可**し、ダブルタップ拡大の抑制だけを残す。
+- TUNINGの音階変更・音源（三角波／正弦波／シンセ）切替でごく稀にノイズ、その後に遅延感。これを単なる「バッファ不足」と断定する直接データはない。
+
+### PWAのズーム：技術調査
+- MDNの`touch-action: manipulation`はピンチ拡大・縮小とパンを許可し、通常のダブルタップ拡大を無効化する。iOSのWebKit公式記事でも`manipulation`がボタンの高速タップとピンチ操作を両立することを説明している。
+  - https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/touch-action
+  - https://webkit.org/blog/5610/more-responsive-tapping-on-ios/
+- 元のアプリには`touch-action: none`と`gesturestart/gesturechange`や二指移動への`preventDefault`、および`user-scalable=no`があり、ピンチ復帰を妨げていた。
+- これを`touch-action: manipulation`へ置換し、viewportのズーム抑制メタ指定と二指ジェスチャー阻止のイベントハンドラを撤去。**背景部分だけに対するダブルタップ抑止の補助処理**は残し、ボタンの連続タップ・ピンチ操作は阻止しない。
+- WebKitのバージョンやOSのジェスチャー処理により差があるため、100%のダブルタップ無効化保証ではない。
+
+### Audioのノイズと遅延：技術調査
+- Web Audio仕様は、急なAudioParam変更によるクリック音を`setTargetAtTime`等の短い平滑化で避けられること、処理負荷・スケジューリング遅延は音切れ・ポップの原因になりうることを説明。
+  - https://www.w3.org/TR/webaudio/#AudioParam
+  - https://www.w3.org/TR/webaudio/#performance
+- Tone.jsのPerformanceガイドは、lookAhead・latencyHintが応答速度と安定性のトレードオフであることを説明。PlayerのplaybackRateはSafari/iOSで直接数値変更され、AudioParamのような補間でない。
+  - https://github.com/tonejs/tone.js/wiki/Performance
+  - https://tonejs.github.io/docs/r13/Player
+- 現行の入力音源生成は一回の短いPCM波形バッファを再利用していたため、バッファの「毎回作り直し」は今回の直接原因として確認されなかった。一方、音程変更中の`samplePlayer.playbackRate`代入は即時であり、停止・再開では毎回3DのWebGLRendererまで破棄・再生成していた。後者はメインスレッド/GPUの負荷増加要因となりうる（因果は未確定）。
+
+### 今回の実装
+1. `inputSensitivity=[4,8,32,64]`、初期`sensitivityIndex=1`、VOICEのマイク感度と追従設定は独立。
+2. ルート／操作ボタン／UIの`touch-action: manipulation`。背景ダブルタップへの限定的なフォールバックのみ。通常のピンチで拡大状態から復帰可能な構成。
+3. シンセ音の音階変更時は約35msかけてゲインを下げ、45ms後にバッファ再生速度を更新、約80msかけて音量を戻す。短時間に連続操作された場合は古い予約をキャンセルして最後の操作だけ適用。停止時も予約を破棄。
+4. 3DのWebGLレンダラー・シェーダーを音源の停止・切替で作り直さず保持。レンダーループを停止し、画面のみクリア。ページを閉じる`pagehide`ではGPU資源を確実に破棄する。
+5. Tone.jsのlookAheadを0.02から0.035秒へ小幅に変更し、最低限のスケジューリング余裕を確保。作成済みAudioContextの`latencyHint`書き換えは効かないため撤去。大きなバッファ拡大は元の「遅延感」を悪化させる可能性があるため避ける。
+6. 音声の再生ごとに既存のリミッターと出力フェードを経由する。マイク音をスピーカーへ返す経路は作らない。現在の「最初の音量を約3dB高く」する仕様もそのまま。
+
+### 回帰試験と実機での確認事項
+- `tests/viewport-gesture.test.cjs`: CSS/manipulation／ピンチ阻止ハンドラ廃止／背景ダブルタップの補助抑止／連続ボタンタップを確認。
+- `tests/audio-session.test.cjs`: 実際の音声関数を抽出して、音色を横断する7回の作成・停止・解放、PCMバッファの単一生成、シンセ変更時のゲイン抑制→再生速度変更→ゲイン復帰、速い連打の予約集約、停止時のタイマー消去、描画環境の再利用を確認。
+- `tests/voice-pitch.test.cjs`/`tests/voice-modes.test.cjs`/`tests/voice-response.test.cjs`: 新しいマイク感度64倍を含む操作と合成音声の解析、初期8倍と追従設定の独立性を検証。
+- **未検証**：iPhone/iPad実機でのSafariのピンチ動作、Tone.js内部の実スケジューリング、ノイズ・遅延の再発率、AirPodsとスピーカーの音質。モック検査は再現性を確かめるもので、実機での根本原因の確定にはならない。バッファ不足の断定はしない。
