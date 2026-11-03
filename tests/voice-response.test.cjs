@@ -6,6 +6,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'utf8');
 const settings = source.match(/const RESPONSE_MODES = \[[\s\S]*?\n  \];/)?.[0];
 assert.ok(settings, 'response mode settings missing');
+assert.match(source, /let responseIndex = 2/, 'stable must be the default tracking setting');
 function take(name) {
   const match = new RegExp('function ' + name + '\\([^)]*\\)\\s*\\{').exec(source);
   assert.ok(match, 'missing function ' + name);
