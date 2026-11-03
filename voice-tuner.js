@@ -35,8 +35,8 @@
   ];
   let responseIndex = 2; // 安定 is the default; 敏感／標準 remain selectable.
   let smoothedMidi = null, selectedMidi = null, lastSmoothAt = 0, lastGoodPitchAt = 0;
-  const inputSensitivity = [1, 4, 8, 16];
-  let sensitivityIndex = 2; // 8x is the starting point; manual override for noisy devices.
+  const inputSensitivity = [16, 32, 64];
+  let sensitivityIndex = 0; // 16x starting point; 32x / 64x for quiet iPad microphones.
   let targetFrequency = 130.81278265, baseTargetFrequency = 130.81278265;
   let lastDetectedHz = null, currentGuideFrequency = null;
   let mode = 'free', notation = 'solfege', octaveIndex = 0;
@@ -400,9 +400,17 @@
       }
       const pitch = estimatePitch(samples, context.sampleRate);
       showPitch(pitch, false, now);
-      status.textContent = pitch !== null
-        ? '音程を検出中'
-        : rms >= 0.014 ? '声を検知・音程を解析中' : 'マイク入力待ち（レベルを確認してください）';
+      // Very large microphone gain can overload analysis. Warn without
+      // silently changing the gain selected by the user.
+      let peak = 0;
+      for (let i = 0; i < samples.length; i++) {
+        peak = Math.max(peak, Math.abs(samples[i]));
+      }
+      status.textContent = peak >= 0.98
+        ? '入力が大きめです。音程が不安定なら感度を下げてください'
+        : pitch !== null
+          ? '音程を検出中'
+          : rms >= 0.014 ? '声を検知・音程を解析中' : 'マイク入力待ち（レベルを確認してください）';
     } catch (error) {
       status.textContent = '解析エラー: ' + error.message;
       void stop();
