@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,36 +20,106 @@
     <style>
         :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
         
-        html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
+        html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
-        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
+        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: transparent; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.7px var(--accent-color); text-shadow: none; filter: drop-shadow(0 0 6px var(--accent-color)) drop-shadow(0 0 18px var(--accent-color)); opacity: 0.30; z-index: 1; pointer-events: none; will-change: opacity; }
+        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 3px solid rgba(255,255,255,0.54); border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.45), 0 0 23px var(--accent-color), 0 0 58px var(--accent-color), inset 0 0 17px var(--accent-color); z-index: 0; opacity: 0.84; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
         
-        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 5dvh) + 2dvh); padding-bottom: calc(env(safe-area-inset-bottom, 2dvh) + 1dvh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.46), transparent 31%, transparent 68%, rgba(0,0,0,0.75)); pointer-events: none; touch-action: manipulation; }
         
         #ui-layer > * { pointer-events: auto; }
         header { flex: 0 0 auto; text-align: center; margin-top: 1dvh; }
         .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
         .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
         
-        #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 0; }
+        #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 0; padding-block: clamp(5px, 1.15dvh, 13px); box-sizing: border-box; }
+        /* Ring remains above the overlay but below the central text. */
+        #central-node > :not(#chakra-ring) { position: relative; z-index: 1; }
         .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1dvh; }
         .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(80px, 25dvh, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1dvh; line-height: 1; }
         .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
         .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
         
-        #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; width: 100%; max-width: 400px; margin-bottom: 1dvh; }
-        #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5dvh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
-        #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5dvh; }
-        .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
+        #control-panel { flex: 0 0 auto; display: flex; flex-direction: column; gap: clamp(9px, 1.45dvh, 15px); background: rgba(15,15,19,0.38); border: 1px solid rgba(255,255,255,0.14); border-radius: 24px; padding: clamp(15px, 2dvh, 22px) clamp(16px, 5vw, 24px); box-sizing: border-box; text-align: center; width: 100%; max-width: 440px; margin: 0 auto; }
+        #control-panel > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+        #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.94; letter-spacing: 1px; color: #DDD; font-family: 'Noto Sans JP', sans-serif; line-height: 1.55; }
+        #chakra-selector { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: center; justify-items: center; width: 100%; gap: clamp(3px, 1vw, 9px); }
+        .chakra-btn { width: 100%; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.82); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
         .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
-        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 1.5dvh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 1.5dvh; touch-action: manipulation; }
+        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); min-height: 44px; padding: clamp(9px, 1.6dvh, 15px) 10px; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; touch-action: manipulation; }
         #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
         #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-        .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2dvh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
+        .toggle-btn { flex: 1; min-width: 0; min-height: 42px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(9px, 2.5vw, 12px); line-height: 1.25; padding: 9px 5px; border-radius: 9px; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; letter-spacing: 0.15px; touch-action: manipulation; }
         .toggle-btn:active { background: rgba(255,255,255,0.3); }
-        #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
+        #debug-panel, #bottom-utilities { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
+        #audio-tools { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
+        body.voice-mode #audio-tools { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        #control-panel .toggle-btn { width: 100%; }
+        #ui-layer, #control-panel, #central-node, button, .chakra-btn, .toggle-btn { touch-action: manipulation; }
+        @media (max-height: 720px) {
+            #ui-layer { padding-top: calc(env(safe-area-inset-top, 0px) + 7px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7px); }
+            #control-panel { gap: 7px; padding-block: 11px; }
+            #control-panel .toggle-btn { min-height: 34px; padding-block: 6px; }
+            #central-node { padding-block: 4px; }
+        }
+        #voice-panel[hidden] { display: none; }
+        #voice-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; width: min(94%, 410px); gap: clamp(10px, 1.8dvh, 19px); padding-block: clamp(6px, 1.2dvh, 14px); box-sizing: border-box; text-align: center; color: #fff; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        #voice-target-heading { font-size: clamp(12px, 2.7vw, 16px); letter-spacing: 2px; opacity: .8; }
+        #voice-target-freq { font-size: clamp(17px, 4vw, 23px); color: var(--accent-color); font-weight: 700; }
+        /* Voice mode is independent of the last selected chakra's accent. */
+        body.voice-mode .title-sub,
+        body.voice-mode #voice-target-freq,
+        body.voice-mode #voice-target-heading { color: #D9E1EC; }
+        body.voice-mode #voice-freq,
+        body.voice-mode #voice-cents { color: var(--voice-pitch-color, #D9E1EC); transition: color 0.24s ease; }
+        body.voice-mode #voice-level-fill { background: #91A5BA; }
+        body.voice-mode #voice-direction,
+        body.voice-mode #voice-status { color: #D9E1EC; }
+        #voice-note { font-size: clamp(60px, 16vw, 94px); font-weight: 800; line-height: 1; letter-spacing: 1px; color: #fff; -webkit-text-stroke: 1.7px var(--voice-outline-color, #91A5BA); paint-order: stroke fill; text-shadow: 0 0 12px var(--voice-outline-color, #91A5BA), 0 0 27px var(--voice-outline-color, #91A5BA); transition: -webkit-text-stroke-color 0.24s ease, text-shadow 0.24s ease; }
+        #voice-freq { font-size: clamp(18px, 4vw, 23px); font-variant-numeric: tabular-nums; }
+        #voice-cents { font-size: clamp(15px, 3.5vw, 20px); font-variant-numeric: tabular-nums; }
+        #voice-direction { font-size: 13px; min-height: 1.4em; opacity: .85; }
+        #voice-meter { width: 100%; height: 52px; position: relative; }
+        #voice-meter-track { position: absolute; height: 6px; top: 24px; left: 6%; right: 6%; border-radius: 6px; background: linear-gradient(90deg,#64748b 0%, #c7d2fe 42%, #53c7a9 50%, #c7d2fe 58%, #64748b 100%); }
+        #voice-meter-track::after { content: ''; position: absolute; width: 2px; height: 19px; top: -7px; left: 50%; background: #fff; }
+        #voice-needle { position: absolute; z-index: 2; left: 50%; top: 9px; width: 3px; height: 35px; background: #fff; border-radius: 4px; box-shadow: 0 0 9px #fff; transform: translateX(-50%); transition: left 240ms ease-out; }
+        #voice-meter-low, #voice-meter-high { position: absolute; bottom: 0; font-size: 11px; opacity: .7; }
+        #voice-meter-low { left: 3%; } #voice-meter-high { right: 3%; }
+        #voice-level { height: 5px; background: rgba(255,255,255,.15); width: 75%; border-radius: 5px; overflow: hidden; }
+        #voice-level-fill { height: 100%; background: var(--accent-color); width: 0; transition: width 90ms linear; }
+        #voice-status { min-height: 2em; font-size: 12px; opacity: .88; }
+        #btn-guide, #btn-mic-gain, #btn-voice-smoothing { display: none; }
+        #voice-options { display: none; grid-template-columns: repeat(3, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
+        #voice-options .toggle-btn { min-height: 42px; }
+        body.voice-mode #voice-options { display: grid; }
+        body.voice-mode #bonji-bg, body.voice-mode #chakra-ring, body.voice-mode #yomi-display,
+        body.voice-mode #kanji-display, body.voice-mode #on-display, body.voice-mode #note-display,
+        body.voice-mode #meaning, body.voice-mode #action-btn, body.voice-mode #debug-panel,
+        body.voice-mode #bottom-utilities, body.voice-mode #btn-sound { display: none !important; }
+        body.voice-mode #btn-guide, body.voice-mode #btn-mic-gain, body.voice-mode #btn-voice-smoothing { display: block; }
+        body.voice-mode #control-panel { background: rgba(12,12,18,.66); gap: clamp(12px, 2dvh, 19px); padding-block: clamp(18px, 2.5dvh, 26px); }
+        body.voice-mode #chakra-selector .chakra-btn { font-size: clamp(14px, 4vw, 19px); }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+        #toast-msg { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
+        /* Rin Player-inspired PWA update dialog, with iPhone safe-area spacing. */
+        #update-modal { position: fixed; z-index: 10020; inset: 0; display: flex; align-items: center; justify-content: center; padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box; background: rgba(0,0,0,0.68); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+        #update-modal[hidden] { display: none; }
+        #update-modal-box { width: min(100%, 360px); box-sizing: border-box; border-radius: 22px; padding: 26px 22px 22px; background: rgba(23,24,34,0.96); border: 1px solid rgba(255,255,255,0.22); color: #fff; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.65); font-family: 'Noto Sans JP', sans-serif; }
+        #update-modal-icon { font-size: 29px; color: var(--accent-color); line-height: 1.4; min-height: 44px; }
+        #update-modal-icon.checking { width: 27px; height: 27px; min-height: 0; border: 3px solid rgba(255,255,255,0.24); border-top-color: var(--accent-color); border-radius: 50%; margin: 5px auto 12px; animation: update-spin .8s linear infinite; }
+        @keyframes update-spin { to { transform: rotate(360deg); } }
+        #update-modal-title { font-size: 17px; font-weight: 700; margin: 10px 0; letter-spacing: 0.04em; }
+        #update-modal-message { font-size: 12px; line-height: 1.75; color: rgba(255,255,255,0.75); margin: 0; }
+        #update-modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        #update-modal-actions[hidden] { display: none; }
+        #update-modal-actions button { flex: 1; min-height: 44px; border: 1px solid rgba(255,255,255,0.23); border-radius: 12px; background: rgba(255,255,255,0.12); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px; touch-action: manipulation; }
+        #update-button-apply { background: var(--accent-color) !important; color: #000 !important; border-color: transparent !important; }
+        #update-modal-actions button[hidden] { display: none; }
+        #update-recovery-help { margin: 14px 0 0; font-size: 11px; color: rgba(255,255,255,.65); }
+        #update-recovery-help[hidden] { display: none; }
+        #update-recovery-help a { color: #a2e0e5; text-decoration: underline; text-underline-offset: 3px; touch-action: manipulation; }
+        @media (prefers-reduced-motion: reduce) { #update-modal-icon.checking { animation: none; } }
     </style>
 </head>
 <body>
@@ -67,9 +137,30 @@
             <div id="kanji-display" class="kanji">地</div>
             <div id="on-display" class="on-guide">ア / [ a ]</div>
             <div id="note-display" class="note-display">C3 (ド) / 131Hz</div>
+            <section id="voice-panel" hidden aria-label="音声チューナー">
+                <div id="voice-target-heading"><span id="voice-target-mode-label">自動判定</span> <strong id="voice-target-note">—</strong></div>
+                <div id="voice-target-freq">130.8 Hz</div>
+                <div id="voice-note">—</div>
+                <div id="voice-freq">声を出してください</div>
+                <div id="voice-cents">±0 cent</div>
+                <div id="voice-meter" aria-label="目標音からのずれ">
+                    <div id="voice-meter-track"></div>
+                    <div id="voice-needle"></div>
+                    <span id="voice-meter-low">低い −50</span>
+                    <span id="voice-meter-high">+50 高い</span>
+                </div>
+                <div id="voice-direction">目標音に合わせて声を出してください</div>
+                <div id="voice-level"><div id="voice-level-fill"></div></div>
+                <div id="voice-status" aria-live="polite">マイク未使用</div>
+            </section>
         </div>
         <div id="control-panel">
             <div id="meaning">土 / 基盤 / 生命 / 会陰</div>
+            <div id="voice-options">
+                <button id="btn-voice-mode" class="toggle-btn" type="button">フリー</button>
+                <button id="btn-voice-notation" class="toggle-btn" type="button">表示: ドレミ</button>
+                <button id="btn-voice-octave" class="toggle-btn" type="button" disabled>音域: 自動</button>
+            </div>
             <div id="chakra-selector"></div>
             <button id="action-btn">TUNING START</button>
             <div id="debug-panel">
@@ -77,11 +168,31 @@
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
-            <div style="display: flex; justify-content: center; width: 100%; gap: 2%; margin-top: 2dvh;">
+            <div id="bottom-utilities" style="display: flex; justify-content: center; width: 100%; gap: 2%; margin-top: 2dvh;">
                 <button id="btn-check-update" class="toggle-btn" style="flex: 1;" onclick="checkForUpdate()">UPDATE</button>
                 <button id="btn-timer-display" class="toggle-btn" style="flex: 1; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3);" onclick="cycleTimer()">TIMER: OFF</button>
                 <button id="btn-boost" class="toggle-btn" style="flex: 1;">BOOST: ON</button>
             </div>
+            <div id="audio-tools">
+                <button id="btn-sound" class="toggle-btn" type="button" aria-label="音源を切り替える">音源: 三角波</button>
+                <button id="btn-voice" class="toggle-btn" type="button" aria-label="ボイスチューナーを起動">VOICE: START</button>
+                <button id="btn-guide" class="toggle-btn" type="button" disabled>ガイド音を鳴らす</button>
+                <button id="btn-mic-gain" class="toggle-btn" type="button" aria-label="マイク感度を切り替える">感度 ×8</button>
+                <button id="btn-voice-smoothing" class="toggle-btn" type="button" aria-label="音程表示の追従速度を切り替える">追従: 安定</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="update-modal" hidden role="dialog" aria-modal="true" aria-labelledby="update-modal-title" aria-describedby="update-modal-message">
+        <div id="update-modal-box">
+            <div id="update-modal-icon" aria-hidden="true"></div>
+            <h2 id="update-modal-title">アップデート</h2>
+            <p id="update-modal-message" aria-live="polite"></p>
+            <div id="update-modal-actions" hidden>
+                <button id="update-button-close" type="button">閉じる</button>
+                <button id="update-button-apply" type="button" hidden>更新する</button>
+            </div>
+            <p id="update-recovery-help" hidden><a href="./update-recovery.html">更新できない場合の修復</a></p>
         </div>
     </div>
 
@@ -91,6 +202,40 @@
         document.documentElement.style.setProperty('--vh', `${vh}px`);
     }
     setFillHeight();
+
+    // WebKit supports "manipulation": pinch zoom stays available to recover
+    // the viewport, while double-tap smart zoom is normally suppressed.
+    // Fallback only for rare double-taps on non-interactive background nodes.
+    function blockViewportZoom(event) {
+        if (event.cancelable) event.preventDefault();
+    }
+    let lastBackgroundTap = null;
+    document.addEventListener('touchend', event => {
+        if (!event.changedTouches || event.changedTouches.length !== 1 ||
+            (event.touches && event.touches.length !== 0)) {
+            lastBackgroundTap = null;
+            return;
+        }
+        const target = event.target;
+        if (target && target.closest &&
+            target.closest('button, a, input, select, textarea, label')) {
+            lastBackgroundTap = null;
+            return;
+        }
+        const touch = event.changedTouches[0];
+        const now = performance.now();
+        if (lastBackgroundTap && now - lastBackgroundTap.time < 320 &&
+            Math.hypot(touch.clientX - lastBackgroundTap.x,
+                       touch.clientY - lastBackgroundTap.y) < 30) {
+            blockViewportZoom(event);
+            lastBackgroundTap = null;
+        } else {
+            lastBackgroundTap = { time: now, x: touch.clientX, y: touch.clientY };
+        }
+    }, { passive: false });
+    document.addEventListener('touchcancel', () => {
+        lastBackgroundTap = null;
+    }, { passive: true });
     window.addEventListener('resize', setFillHeight);
     window.addEventListener('orientationchange', () => {
         setTimeout(setFillHeight, 100);
@@ -134,7 +279,10 @@
     let boostOn = true;
     function getTargetVolume() {
         const base = isWindows ? -12 : -3;
-        return boostOn ? base : base - 20;
+        // User-selected +6 dB (~2x signal amplitude) over the last BOOST
+        // preset. The -1 dB limiter caps peaks, so acoustic output may
+        // increase less than 2x, especially with strong source patches.
+        return boostOn ? base + 17.3 : base - 20;
     }
 
     const bonjiEl = document.getElementById('bonji-bg');
@@ -161,38 +309,119 @@
 
     // ★修正箇所：グローバルにあったToneの設定を削除し、全て initAudio 関数の中に移動しました。
 
-    let limiter, reverb, delay, lpf, hpf, env;
+    let limiter, reverb, delay, lpf, hpf, env, sessionVolume;
     let audioInitialized = false;
     let osc = null;
+    let samplePlayer = null;
+    let dryGain = null;
+    let padBuffer = null;
+    let padPitchTimer = null;
+    let soundModeIndex = 0; // 0: legacy triangle+FX, 1: clean sine, 2: pre-rendered soft pad
+    const SOUND_NAMES = ['三角波', '正弦波', 'シンセ'];
 
     function initAudio() {
         if (audioInitialized) return;
         
         // ★ユーザーがボタンを押した「直後」に初めて設定を行う（ここでContextが安全に作られる）
-        Tone.context.lookAhead = 0.1;
-        Tone.context.latencyHint = "playback";
+        // Keep the same AudioContext and its interactive output route.
+        // Updating latencyHint after creation does not resize the hardware buffer.
+        Tone.context.lookAhead = 0.035;
 
+        // New output chain for each playback session. Do not reuse previous FX tails.
+        // Gain before limiter; master BOOST cannot bypass the output limiter.
         limiter = new Tone.Limiter(-1).toDestination();
-        reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
+        sessionVolume = new Tone.Volume(getTargetVolume()).connect(limiter);
+        dryGain = new Tone.Gain(0).connect(sessionVolume); // FXを通さない音源比較用
+        reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(sessionVolume);
         delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
         lpf = new Tone.Filter({ frequency: 8000, type: "lowpass", rolloff: -12 }).connect(delay);
         hpf = new Tone.Filter({ frequency: 150, type: "highpass", rolloff: -24 }).connect(lpf);
-        env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(hpf);
+        env = new Tone.AmplitudeEnvelope({ attack: 0.25, decay: 0, sustain: 1, release: 0.30 }).connect(hpf);
         
         audioInitialized = true;
     }
 
+    function disposeAudioChain() {
+        // Reverb/delay keep an internal tail: dispose all nodes before the next start.
+        for (const node of [env, hpf, lpf, delay, reverb, dryGain, limiter, sessionVolume]) {
+            if (node) {
+                try { node.dispose(); } catch (error) { console.warn('Audio cleanup:', error); }
+            }
+        }
+        env = hpf = lpf = delay = reverb = dryGain = limiter = sessionVolume = null;
+        audioInitialized = false;
+    }
+
+    // 220Hzの整数周期から短いループを一度だけ作り、Tone.Playerで繰り返す。
+    // 外部サンプル音源は不要。ピッチはplaybackRateで制御する。
+    function makePadBuffer() {
+        const ctx = Tone.getContext().rawContext || Tone.getContext()._context;
+        const cycles = 64, rate = ctx.sampleRate;
+        const length = Math.round(rate * cycles / 220);
+        const buffer = ctx.createBuffer(1, length, rate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i++) {
+            const phase = 2 * Math.PI * cycles * i / length;
+            data[i] = 0.55 * Math.sin(phase) + 0.12 * Math.sin(2 * phase) + 0.03 * Math.sin(3 * phase);
+        }
+        return buffer;
+    }
+
+    // A fast mute/switch/fade protects the buffer player's playback-rate
+    // transition against phase discontinuities on iOS. Never recreate its buffer
+    // or the audio graph just to change a note.
+    function setPadPitch(rate) {
+        if (!samplePlayer || !dryGain) return;
+        if (padPitchTimer !== null) {
+            clearTimeout(padPitchTimer);
+            padPitchTimer = null;
+        }
+        const player = samplePlayer;
+        // Start on the current audio clock, without the normal lookAhead delay.
+        dryGain.gain.rampTo(0.12, 0.025, Tone.immediate());
+        padPitchTimer = setTimeout(() => {
+            padPitchTimer = null;
+            if (player !== samplePlayer || !isTuning || isStopping || !dryGain) return;
+            player.playbackRate = rate;
+            dryGain.gain.rampTo(1, 0.06, Tone.immediate());
+        }, 45);
+    }
+
     function createOsc(freq) {
         destroyOsc();
-        if (!env) initAudio(); 
-        osc = new Tone.Oscillator({ type: "triangle", frequency: freq, volume: -8 }).connect(env);
-        osc.start();
+        if (!env) initAudio();
+        if (soundModeIndex === 2) {
+            if (!padBuffer) padBuffer = makePadBuffer();
+            samplePlayer = new Tone.Player({
+                url: padBuffer, loop: true, volume: -3, fadeIn: 0.06, fadeOut: 0.12
+            }).connect(dryGain);
+            samplePlayer.playbackRate = freq / 220;
+            samplePlayer.start();
+            dryGain.gain.rampTo(1, 0.10);
+        } else {
+            const clean = soundModeIndex === 1;
+            osc = new Tone.Oscillator({
+                type: clean ? 'sine' : 'triangle',
+                frequency: freq,
+                volume: clean ? -9 : -8
+            }).connect(clean ? dryGain : env);
+            osc.start();
+            if (clean) dryGain.gain.rampTo(1, 0.10);
+        }
     }
 
     function destroyOsc() {
+        if (padPitchTimer !== null) {
+            clearTimeout(padPitchTimer);
+            padPitchTimer = null;
+        }
         if (osc) {
             try { osc.stop(); osc.dispose(); } catch(e) {}
             osc = null;
+        }
+        if (samplePlayer) {
+            try { samplePlayer.stop(); samplePlayer.dispose(); } catch(e) {}
+            samplePlayer = null;
         }
     }
 
@@ -316,9 +545,11 @@
             material.uniforms.uColor.value.setHex(data.color);
             material.uniforms.uChakraId.value = data.id;
         }
-        if (isTuning && !isStopping && osc) {
-            osc.frequency.rampTo(freq, 1.0);
+        if (isTuning && !isStopping) {
+            if (osc) osc.frequency.rampTo(freq, 0.055);
+            if (samplePlayer) setPadPitch(freq / 220);
         }
+        if (window.kotodamaVoiceTuner) window.kotodamaVoiceTuner.setTarget(window.kotodamaGetVoiceTarget());
     }
 
     const actionBtn = document.getElementById('action-btn');
@@ -331,40 +562,31 @@
         stopStartTime = performance.now();
 
         try {
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            env.triggerRelease();
-            Tone.Destination.volume.rampTo(-60, 2.5);
+            if (env) env.triggerRelease();
+            if (dryGain) dryGain.gain.rampTo(0, 0.18);
+            if (sessionVolume) sessionVolume.volume.rampTo(-65, 0.22);
 
-            await new Promise(resolve => setTimeout(resolve, 2800));
+            await new Promise(resolve => setTimeout(resolve, 290));
 
             stopLoop();
             destroyOsc();
+            disposeAudioChain();
 
-            if (renderer) {
-                renderer.dispose();
-                const container = document.getElementById('webgl-container');
-                if (container && container.contains(renderer.domElement)) {
-                    container.removeChild(renderer.domElement);
-                }
-                renderer = null;
-                material = null;
-                scene = null;
-                particleSystem = null;
+            // Keep the WebGL context and shaders for the next sound session.
+            // Recreating them on every switch spikes main-thread/GPU work.
+            if (renderer && material) {
+                material.uniforms.uOpacity.value = 0;
+                renderer.clear();
             }
 
-            const context = Tone.getContext();
-            const rawContext = context.rawContext || context._context;
-            if (rawContext && typeof rawContext.suspend === 'function') {
-                if (rawContext.state === 'running') {
-                    await rawContext.suspend().catch(e => console.warn("Suspend failed:", e));
-                }
-            } else {
-                Tone.Transport.stop();
-            }
-
+            // Keep the context running until iOS actually backgrounds the page.
+            // Avoid suspend/resume cycles on each sound change.
         } catch (e) {
             console.error("Cleanup error:", e);
         } finally {
+            stopLoop();
+            destroyOsc();
+            disposeAudioChain();
             isTuning = false;
             isStopping = false;
             actionBtn.disabled = false;
@@ -372,7 +594,7 @@
 
             lastTimerStr = "";
 
-            bonjiEl.style.opacity = '0.4';
+            bonjiEl.style.opacity = '0.30';
             ringEl.style.transform = 'translate(-50%, -50%) scale(0.5)';
 
             if (timerEl) {
@@ -399,13 +621,12 @@
             }
             initAudio();
 
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.value = getTargetVolume();
-
+            // Only the current session volume controls playback loudness.
+            // No global Destination fade remains from the previous mode.
             initThree();
             createOsc(getFreq());
             updateAudioAndUI();
-            env.triggerAttack();
+            if (soundModeIndex === 0) env.triggerAttack();
             tuneStartTime = lastRenderRealTime = performance.now();
             timerSessionStartTime = performance.now();
             startLoop();
@@ -470,9 +691,10 @@
         lastRenderRealTime = now;
         material.uniforms.uTime.value    = shaderAccumulatedTime;
         material.uniforms.uPulse.value   = pulse;
-        material.uniforms.uOpacity.value = 0.6 * alpha;
+        material.uniforms.uOpacity.value = (0.75 + 0.10 * pulse) * alpha;
 
-        bonjiEl.style.opacity  = (0.3 + pulse * 0.5) * alpha;
+        // Follow the breath from 30% to 100% opacity; fade separately on stop.
+        bonjiEl.style.opacity  = (0.30 + pulse * 0.70) * alpha;
         ringEl.style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
         renderer.render(scene, camera);
     }
@@ -481,11 +703,52 @@
         const b = document.createElement('button');
         b.className = 'chakra-btn';
         b.innerText = c.id;
-        b.onclick = () => { currentChakraIndex = i; updateAudioAndUI(); };
+        b.onclick = () => {
+            if (window.kotodamaVoiceTuner?.active && window.kotodamaVoiceTuner.mode === 'free') return;
+            currentChakraIndex = i;
+            updateAudioAndUI();
+        };
         document.getElementById('chakra-selector').appendChild(b);
     });
 
     actionBtn.onclick = toggleTuning;
+    // 音源変更は停止中のみ許可して急な切替ノイズを避ける。
+    document.getElementById('btn-sound').onclick = () => {
+        if (isTuning || isStopping) { showToast('音を停止してから切り替えてください'); return; }
+        soundModeIndex = (soundModeIndex + 1) % SOUND_NAMES.length;
+        document.getElementById('btn-sound').innerText = '音源: ' + SOUND_NAMES[soundModeIndex];
+        showToast(SOUND_NAMES[soundModeIndex] + ' に切り替えました');
+    };
+    window.kotodamaSoundIsRunning = () => isTuning || isStopping;
+    // VOICEは基本音階C3〜B3に固定し、瞑想側の+1・ソルフェ設定を変更しない。
+    window.kotodamaGetVoiceTarget = () => Tone.Frequency(chakraData[currentChakraIndex].note).toFrequency();
+    window.kotodamaSetVoiceLabels = (active, notation = 'solfege') => {
+        const names = notation === 'solfege'
+            ? ['ド', 'レ', 'ミ', 'ファ', 'ソ', 'ラ', 'シ']
+            : ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+        document.querySelectorAll('#chakra-selector .chakra-btn').forEach((btn, index) => {
+            btn.innerText = active ? names[index] : String(chakraData[index].id);
+            btn.setAttribute('aria-label', active ? '音階 ' + names[index] : 'チャクラ ' + chakraData[index].id);
+        });
+    };
+    window.kotodamaSetVoiceSelection = (selectedIndex, noteColor = null) => {
+        document.querySelectorAll('#chakra-selector .chakra-btn').forEach((btn, index) => {
+            const selected = index === selectedIndex;
+            // Natural-note buttons follow the voice palette in voice mode.
+            // Chakra mode continues using its original seven colors.
+            const color = document.body.classList.contains('voice-mode') && noteColor
+                ? noteColor : chakraData[index].strColor;
+            btn.classList.toggle('active', selected);
+            btn.style.backgroundColor = selected ? color : 'rgba(255,255,255,0.1)';
+            btn.style.boxShadow = selected ? '0 0 10px ' + color : 'none';
+        });
+    };
+    window.kotodamaStopSound = async () => {
+        if (isTuning || isStopping) {
+            if (isStopping) return;
+            await stopTuning();
+        }
+    };
 
     document.getElementById('btn-vis').onclick = () => {
         visMode = (visMode + 1) % 3;
@@ -505,38 +768,13 @@
     document.getElementById('btn-boost').onclick = () => {
         boostOn = !boostOn;
         document.getElementById('btn-boost').innerText = boostOn ? 'BOOST: ON' : 'BOOST: OFF';
-        if (isTuning) {
-            Tone.Destination.volume.cancelScheduledValues(Tone.now());
-            Tone.Destination.volume.rampTo(getTargetVolume(), 0.5);
+        if (isTuning && sessionVolume) {
+            sessionVolume.volume.rampTo(getTargetVolume(), 0.20);
         }
     };
 
-    function checkForUpdate() {
-        if ('serviceWorker' in navigator) {
-            showToast("アップデートを確認中...");
-            navigator.serviceWorker.getRegistration().then(reg => {
-                if (reg) {
-                    reg.update().then(() => {
-                        if (reg.installing || reg.waiting) {
-                            showToast("アップデートが見つかりました。再読込してください。");
-                        } else {
-                            showToast("最新バージョンです。");
-                        }
-                    });
-                }
-            });
-        }
-    }
-
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').then(registration => {
-                console.log('SW registered:', registration);
-            }).catch(error => {
-                console.log('SW registration failed:', error);
-            });
-        });
-    }
+    // PWA update handling is in pwa-update.js.
+    // VitePWA's injected registerSW.js is the sole service-worker registration.
 
     // ★修正箇所：ここでもバックグラウンド処理時に勝手にContextを作らないようガードを追加しました
     document.addEventListener('visibilitychange', () => {
@@ -554,11 +792,27 @@
     });
 
     window.addEventListener('pagehide', () => {
-        if (!audioInitialized) return; // ← 追加：まだスタート押してないなら無視
+        // Page exit is the right place for final GPU cleanup; never do this
+        // during ordinary instrument changes. Do not create an AudioContext on exit.
+        const hadAudio = audioInitialized;
+        stopLoop();
         destroyOsc();
-        const raw = Tone.getContext().rawContext;
-        if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
-            raw.suspend().catch(() => {});
+        disposeAudioChain();
+        if (particleSystem) particleSystem.geometry.dispose();
+        if (material) material.dispose();
+        if (renderer) {
+            renderer.dispose();
+            const container = document.getElementById('webgl-container');
+            if (container && container.contains(renderer.domElement)) {
+                container.removeChild(renderer.domElement);
+            }
+        }
+        renderer = material = scene = particleSystem = camera = null;
+        if (hadAudio) {
+            const raw = Tone.getContext().rawContext;
+            if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
+                raw.suspend().catch(() => {});
+            }
         }
     });
 
@@ -566,5 +820,7 @@
     updateAudioAndUI();
 
 </script>
+<script type="module" src="./voice-tuner.js"></script>
+<script type="module" src="./pwa-update.js"></script>
 </body>
 </html>
