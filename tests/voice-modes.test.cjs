@@ -11,12 +11,12 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   const frames = [];
   const timers = [];
   const classes = new Set();
-  let stoppedTracks = 0, audioPlayCalls = 0, noteIndex = -1;
+  let stoppedTracks = 0, audioPlayCalls = 0, noteIndex = -1, noteColor = null;
   let labels = null, wavBlob = null, lastObjectURL = 0;
   const createdInputGains = [];
   function el(id) {
     if (!elements.has(id)) elements.set(id, {
-      id, textContent: '', style: {}, disabled: false, hidden: id === 'voice-panel', handlers: {},
+      id, textContent: '', style: { setProperty(k,v) { this[k] = v; } }, disabled: false, hidden: id === 'voice-panel', handlers: {},
       addEventListener(name, cb) { this.handlers[name] = cb; }
     });
     return elements.get(id);
@@ -46,7 +46,7 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
     addEventListener() {}, kotodamaSoundIsRunning: () => false,
     kotodamaGetVoiceTarget: () => 130.81278265,
     kotodamaSetVoiceLabels(active, notation) { labels = { active, notation }; },
-    kotodamaSetVoiceSelection(index) { noteIndex = index; }
+    kotodamaSetVoiceSelection(index,color) { noteIndex = index; noteColor = color; }
   };
   const navigator = {
     audioSession: { type: 'auto' },
@@ -87,6 +87,8 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(engine.active, true);
   assert.equal(classes.has('voice-mode'), true);
   assert.equal(createdInputGains[0].gain.value, 8, 'mic input begins at 8x');
+  assert.equal(el('voice-panel').style['--voice-pitch-color'], '#D9E1EC',
+    'no voice input must use a stable neutral palette');
   assert.equal(el('btn-voice-octave').disabled, true);
   el('btn-voice-smoothing').handlers.click();
   assert.equal(engine.response, '敏感');
@@ -115,6 +117,10 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(el('voice-note').textContent, 'ラ3');
   assert.equal(el('voice-note').style.webkitTextStrokeColor, '#7896FF',
     'A3 should have a blue outline');
+  assert.equal(el('voice-panel').style['--voice-pitch-color'], '#7896FF',
+    'frequency and cents should use the detected A3 blue, not the last chakra color');
+  assert.equal(noteColor, '#7896FF',
+    'selected natural note uses the same pitch-class color');
   assert.equal(el('voice-target-note').textContent, 'ラ3');
   assert.equal(noteIndex, 5);
   assert.equal(el('btn-guide').disabled, true, 'guide is unavailable in free mode');
