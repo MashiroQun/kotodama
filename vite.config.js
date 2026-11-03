@@ -4,7 +4,36 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate',
+      // Rin Player-style update UI: stage a new worker until the user accepts.
+      // On a fresh app launch, the app may apply a waiting update automatically.
+      registerType: 'prompt',
+      injectRegister: 'script',
+      workbox: {
+        skipWaiting: false,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        globPatterns: ['**/*.{js,css,html,png,svg,webp,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/(?:tone|three\.js)\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'kotodama-audio-visual-libs',
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\//,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'kotodama-fonts',
+              expiration: { maxEntries: 32, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          }
+        ]
+      },
       
       manifest: {
         id: 'com.mashiro.kotodama-tuner',
