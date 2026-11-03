@@ -416,7 +416,7 @@
             if (osc) osc.frequency.rampTo(freq, 0.055);
             if (samplePlayer) samplePlayer.playbackRate = freq / 220;
         }
-        if (window.kotodamaVoiceTuner) window.kotodamaVoiceTuner.setTarget(freq);
+        if (window.kotodamaVoiceTuner) window.kotodamaVoiceTuner.setTarget(window.kotodamaGetVoiceTarget());
     }
 
     const actionBtn = document.getElementById('action-btn');
@@ -593,7 +593,8 @@
         showToast(SOUND_NAMES[soundModeIndex] + ' に切り替えました');
     };
     window.kotodamaSoundIsRunning = () => isTuning || isStopping;
-    window.kotodamaGetVoiceTarget = () => getFreq();
+    // VOICEは基本音階C3〜B3に固定し、瞑想側の+1・ソルフェ設定を変更しない。
+    window.kotodamaGetVoiceTarget = () => Tone.Frequency(chakraData[currentChakraIndex].note).toFrequency();
     window.kotodamaSetVoiceLabels = active => {
         document.querySelectorAll('#chakra-selector .chakra-btn').forEach((btn, index) => {
             btn.innerText = active ? chakraData[index].note.slice(0, -1) : String(chakraData[index].id);
