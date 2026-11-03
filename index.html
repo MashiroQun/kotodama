@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,13 +20,13 @@
     <style>
         :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
         
-        html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: transparent; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.7px var(--accent-color); text-shadow: none; filter: drop-shadow(0 0 6px var(--accent-color)) drop-shadow(0 0 18px var(--accent-color)); opacity: 0.30; z-index: 1; pointer-events: none; will-change: opacity; }
         #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 3px solid rgba(255,255,255,0.54); border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.45), 0 0 23px var(--accent-color), 0 0 58px var(--accent-color), inset 0 0 17px var(--accent-color); z-index: 0; opacity: 0.84; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
         
-        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.46), transparent 31%, transparent 68%, rgba(0,0,0,0.75)); pointer-events: none; touch-action: none; }
+        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.46), transparent 31%, transparent 68%, rgba(0,0,0,0.75)); pointer-events: none; touch-action: manipulation; }
         
         #ui-layer > * { pointer-events: auto; }
         header { flex: 0 0 auto; text-align: center; margin-top: 1dvh; }
@@ -47,16 +47,16 @@
         #chakra-selector { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: center; justify-items: center; width: 100%; gap: clamp(3px, 1vw, 9px); }
         .chakra-btn { width: 100%; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.82); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
         .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
-        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); min-height: 44px; padding: clamp(9px, 1.6dvh, 15px) 10px; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; touch-action: none; }
+        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); min-height: 44px; padding: clamp(9px, 1.6dvh, 15px) 10px; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; touch-action: manipulation; }
         #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
         #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-        .toggle-btn { flex: 1; min-width: 0; min-height: 42px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(9px, 2.5vw, 12px); line-height: 1.25; padding: 9px 5px; border-radius: 9px; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; letter-spacing: 0.15px; touch-action: none; }
+        .toggle-btn { flex: 1; min-width: 0; min-height: 42px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(9px, 2.5vw, 12px); line-height: 1.25; padding: 9px 5px; border-radius: 9px; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; letter-spacing: 0.15px; touch-action: manipulation; }
         .toggle-btn:active { background: rgba(255,255,255,0.3); }
         #debug-panel, #bottom-utilities { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
         #audio-tools { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
         body.voice-mode #audio-tools { grid-template-columns: repeat(2, minmax(0,1fr)); }
         #control-panel .toggle-btn { width: 100%; }
-        #ui-layer, #control-panel, #central-node, button, .chakra-btn, .toggle-btn { touch-action: none; }
+        #ui-layer, #control-panel, #central-node, button, .chakra-btn, .toggle-btn { touch-action: manipulation; }
         @media (max-height: 720px) {
             #ui-layer { padding-top: calc(env(safe-area-inset-top, 0px) + 7px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7px); }
             #control-panel { gap: 7px; padding-block: 11px; }
@@ -104,7 +104,7 @@
         #update-modal-message { font-size: 12px; line-height: 1.75; color: rgba(255,255,255,0.75); margin: 0; }
         #update-modal-actions { display: flex; gap: 10px; margin-top: 20px; }
         #update-modal-actions[hidden] { display: none; }
-        #update-modal-actions button { flex: 1; min-height: 44px; border: 1px solid rgba(255,255,255,0.23); border-radius: 12px; background: rgba(255,255,255,0.12); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px; touch-action: none; }
+        #update-modal-actions button { flex: 1; min-height: 44px; border: 1px solid rgba(255,255,255,0.23); border-radius: 12px; background: rgba(255,255,255,0.12); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px; touch-action: manipulation; }
         #update-button-apply { background: var(--accent-color) !important; color: #000 !important; border-color: transparent !important; }
         #update-modal-actions button[hidden] { display: none; }
         #update-recovery-help { margin: 14px 0 0; font-size: 11px; color: rgba(255,255,255,.65); }
@@ -194,18 +194,12 @@
     }
     setFillHeight();
 
-    // iOS Safari / home-screen PWA: disable accidental pinch and smart zoom.
-    // Preserve rapid repeated taps on real controls.
+    // WebKit supports "manipulation": pinch zoom stays available to recover
+    // the viewport, while double-tap smart zoom is normally suppressed.
+    // Fallback only for rare double-taps on non-interactive background nodes.
     function blockViewportZoom(event) {
         if (event.cancelable) event.preventDefault();
     }
-    for (const type of ['gesturestart', 'gesturechange']) {
-        document.addEventListener(type, blockViewportZoom, { passive: false });
-    }
-    document.addEventListener('touchmove', event => {
-        if (event.touches && event.touches.length > 1) blockViewportZoom(event);
-    }, { passive: false });
-
     let lastBackgroundTap = null;
     document.addEventListener('touchend', event => {
         if (!event.changedTouches || event.changedTouches.length !== 1 ||
