@@ -78,6 +78,7 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   vm.runInNewContext(script, sandbox, { filename: 'voice-tuner.js' });
   const engine = window.kotodamaVoiceTuner;
   assert.equal(engine.mode, 'free');
+  assert.equal(engine.response, '標準');
   assert.equal(labels, null, 'initial load must not relabel meditation buttons');
 
   el('btn-voice').handlers.click();
@@ -85,6 +86,13 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(engine.active, true);
   assert.equal(classes.has('voice-mode'), true);
   assert.equal(el('btn-voice-octave').disabled, true);
+  el('btn-voice-smoothing').handlers.click();
+  assert.equal(engine.response, '安定');
+  el('btn-voice-smoothing').handlers.click();
+  assert.equal(engine.response, '敏感');
+  el('btn-voice-smoothing').handlers.click();
+  assert.equal(engine.response, '標準');
+  assert.equal(el('btn-mic-gain').textContent, '', 'response must not touch input gain');
   assert.equal(labels.notation, 'solfege');
   frames.shift()(1100);
   assert.equal(el('voice-note').textContent, 'ラ3');
