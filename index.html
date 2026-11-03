@@ -23,7 +23,7 @@
         html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: rgba(255,255,255,0.09); -webkit-text-stroke: 1.4px rgba(255,255,255,0.65); text-shadow: 0 0 9px rgba(255,255,255,0.45), 0 0 22px var(--accent-color), 0 0 48px var(--accent-color); opacity: 0.66; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
+        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: #000; -webkit-text-fill-color: #000; -webkit-text-stroke: 1.6px rgba(255,255,255,0.82); text-shadow: 0 0 9px rgba(255,255,255,0.38), 0 0 22px var(--accent-color), 0 0 48px var(--accent-color); opacity: 0.30; z-index: 1; pointer-events: none; will-change: opacity; }
         #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 3px solid rgba(255,255,255,0.54); border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.45), 0 0 23px var(--accent-color), 0 0 58px var(--accent-color), inset 0 0 17px var(--accent-color); z-index: 0; opacity: 0.84; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
         
         #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.46), transparent 31%, transparent 68%, rgba(0,0,0,0.75)); pointer-events: none; touch-action: none; }
@@ -67,7 +67,7 @@
         #voice-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; width: min(94%, 410px); gap: clamp(10px, 1.8dvh, 19px); padding-block: clamp(6px, 1.2dvh, 14px); box-sizing: border-box; text-align: center; color: #fff; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         #voice-target-heading { font-size: clamp(12px, 2.7vw, 16px); letter-spacing: 2px; opacity: .8; }
         #voice-target-freq { font-size: clamp(17px, 4vw, 23px); color: var(--accent-color); font-weight: 700; }
-        #voice-note { font-size: clamp(60px, 16vw, 94px); font-weight: 800; line-height: 1; letter-spacing: 1px; }
+        #voice-note { font-size: clamp(60px, 16vw, 94px); font-weight: 800; line-height: 1; letter-spacing: 1px; color: #fff; -webkit-text-stroke: 1.7px var(--voice-outline-color, #91A5BA); paint-order: stroke fill; text-shadow: 0 0 12px var(--voice-outline-color, #91A5BA), 0 0 27px var(--voice-outline-color, #91A5BA); transition: -webkit-text-stroke-color 0.24s ease, text-shadow 0.24s ease; }
         #voice-freq { font-size: clamp(18px, 4vw, 23px); font-variant-numeric: tabular-nums; }
         #voice-cents { font-size: clamp(15px, 3.5vw, 20px); font-variant-numeric: tabular-nums; }
         #voice-direction { font-size: 13px; min-height: 1.4em; opacity: .85; }
@@ -537,7 +537,7 @@
 
             lastTimerStr = "";
 
-            bonjiEl.style.opacity = '0.66';
+            bonjiEl.style.opacity = '0.30';
             ringEl.style.transform = 'translate(-50%, -50%) scale(0.5)';
 
             if (timerEl) {
@@ -636,7 +636,8 @@
         material.uniforms.uPulse.value   = pulse;
         material.uniforms.uOpacity.value = (0.75 + 0.10 * pulse) * alpha;
 
-        bonjiEl.style.opacity  = (0.55 + pulse * 0.35) * alpha;
+        // Follow the breath from 30% to 100% opacity; fade separately on stop.
+        bonjiEl.style.opacity  = (0.30 + pulse * 0.70) * alpha;
         ringEl.style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
         renderer.render(scene, camera);
     }
