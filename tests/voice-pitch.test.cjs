@@ -41,4 +41,14 @@ for (const sr of [44100, 48000]) {
   assert.ok(Math.abs(1200*Math.log2(detect(richVoice, sr)/220)) < 15);
   assert.equal(detect(new Float32Array(4096), sr), null);
 }
-console.log('PASS: 22 voice pitch cases (44.1/48kHz; sine, harmonics, silence)');
+for (const sr of [44100, 48000]) {
+  const frequency = 220;
+  const quiet = Float32Array.from({ length: 4096 }, (_, i) =>
+    0.005 * Math.sin(2 * Math.PI * frequency * i / sr)
+  );
+  assert.equal(detect(quiet, sr), null, 'low-level signal should be gated at 1x');
+  const boosted = Float32Array.from(quiet, x => x * 8);
+  assert.ok(Math.abs(1200 * Math.log2(detect(boosted, sr) / frequency)) < 15,
+    '8x boost should recover low-level 220Hz signal');
+}
+console.log('PASS: 26 voice pitch cases (44.1/48kHz; sine, harmonics, silence, low-level microphone gain)');
