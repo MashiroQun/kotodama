@@ -16,7 +16,7 @@
 | --- | --- |
 | Framework preset | Vite（候補がなければ None） |
 | Production branch | `main` |
-| Root directory | `/` （リポジトリ直下） |
+| Root directory | 未指定（リポジトリ直下を使用） |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
 | Node.js | 20以上（ビルド互換性で問題が出た場合は `NODE_VERSION=22` を設定） |
