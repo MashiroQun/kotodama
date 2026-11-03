@@ -1,78 +1,98 @@
 // node tests/audio-session.test.cjs
-// Browser-free lifecycle regression: does NOT replace iOS audio playback testing.
+// Real source-function extraction + mocks. Physical iOS audio requires device testing.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const markup = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const inline = markup.match(/<script>([\s\S]*?)<\/script>/)?.[1];
-assert.ok(inline, 'index.html inline script missing');
-
-function takeFunction(name) {
-  const match = new RegExp('function ' + name + '\\([^)]*\\)\\s*\\{').exec(inline);
-  assert.ok(match, 'missing ' + name);
-  const start = match.index;
+const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const source = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+assert.ok(source, 'inline app script missing');
+function extract(name) {
+  const m = new RegExp('function ' + name + '\\([^)]*\\)\\s*\\{').exec(source);
+  assert.ok(m, 'missing audio function '+name);
+  const from = m.index;
   let depth = 0;
-  for (let i = start + match[0].length - 1; i < inline.length; i++) {
-    if (inline[i] === '{') depth++;
-    if (inline[i] === '}') depth--;
-    if (depth === 0) return inline.slice(start, i + 1);
+  for (let i = from + m[0].length - 1; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    if (source[i] === '}') depth--;
+    if (depth === 0) return source.slice(from, i + 1);
   }
-  throw new Error('unbalanced function ' + name);
+  throw new Error('unbalanced function: ' + name);
 }
-const definitions = ['initAudio', 'disposeAudioChain', 'makePadBuffer', 'createOsc', 'destroyOsc']
-  .map(takeFunction).join('\n');
+const functions = ['initAudio','disposeAudioChain','makePadBuffer','setPadPitch','createOsc','destroyOsc']
+  .map(extract).join('\n');
+const stopSection = source.slice(source.indexOf('    async function stopTuning()'),
+  source.indexOf('    async function toggleTuning()'));
+assert.match(stopSection, /renderer\.clear\(\)/, 'GPU context should be reusable after a stop');
+assert.ok(!stopSection.includes('renderer.dispose()'), 'GPU recreation on every switch is too costly');
+assert.match(source, /Tone\.context\.lookAhead = 0\.035/, 'schedule with some headroom');
+assert.match(source, /padPitchTimer = setTimeout/, 'pad note changes must be gain-gated');
+
 const nodes = [];
-function makeNode(type) {
-  const node = {
+function node(type) {
+  const n = {
     type, disposed: 0, started: 0, stopped: 0,
-    gain: { value: 0, rampTo() {} },
-    volume: { value: 0, rampTo() {} },
-    frequency: { rampTo() {} },
-    toDestination() { return this; },
-    connect() { return this; },
-    start() { this.started++; return this; },
-    stop() { this.stopped++; return this; },
-    dispose() { this.disposed++; return this; }
+    gain: {value:0, actions:[], rampTo(value,time){this.value=value;this.actions.push({value,time});}},
+    volume:{value:0, rampTo(){}},
+    frequency:{rampTo(){}},
+    toDestination(){return this;},connect(){return this;},
+    start(){this.started++;return this;},stop(){this.stopped++;return this;},
+    dispose(){this.disposed++;return this;}
   };
-  nodes.push(node);
-  return node;
+  nodes.push(n);
+  return n;
 }
 const Tone = {
-  context: { lookAhead: 0, latencyHint: '', sampleRate: 48000 },
-  getContext() {
-    return { rawContext: {
-      sampleRate: 48000,
-      createBuffer(_channels, length) {
-        return { getChannelData() { return new Float32Array(length); } };
-      }
-    } };
-  }
+  context:{lookAhead:0, latencyHint:'', sampleRate:48000},
+  getContext() { return {rawContext:{
+    sampleRate:48000,
+    createBuffer(_channels,len){return{getChannelData(){return new Float32Array(len)}}}
+  }}; }
 };
-for (const type of ['Volume','Limiter','Gain','Freeverb','PingPongDelay',
-  'Filter','AmplitudeEnvelope','Oscillator','Player']) {
-  Tone[type] = class { constructor() { return makeNode(type); } };
+for (const name of ['Volume','Limiter','Gain','Freeverb','PingPongDelay','Filter',
+                    'AmplitudeEnvelope','Oscillator','Player']) {
+  Tone[name] = class { constructor(){return node(name)} };
 }
-const harness = new Function('Tone', 'getTargetVolume', [
-  'let limiter, reverb, delay, lpf, hpf, env, sessionVolume;',
-  'let audioInitialized = false, osc = null, samplePlayer = null;',
-  'let dryGain = null, padBuffer = null, soundModeIndex = 0;',
-  definitions,
-  'return { cycle(mode) {',
-  '  soundModeIndex = mode;',
-  '  initAudio(); createOsc(220);',
-  '  assertState(audioInitialized, [osc, samplePlayer].filter(Boolean).length);',
-  '  destroyOsc(); disposeAudioChain();',
-  '  return {initialized: audioInitialized, sources: [osc,samplePlayer].filter(Boolean).length, isolated: sessionVolume === null};',
-  '} };',
-  'function assertState(initialized, sources) { if (!initialized || sources !== 1) throw new Error("invalid session"); }'
-].join('\n'))(Tone, () => -3);
-
-const modes = [0, 1, 2, 0, 2, 1, 0]; // deliberately cross mode boundaries
+const timers = new Map();
+let nextId=0;
+function delayed(fn) {const id=++nextId;timers.set(id,fn);return id}
+function cancel(id){timers.delete(id)}
+function flush(){const callbacks=[...timers.values()];timers.clear();callbacks.forEach(fn=>fn())}
+const harness=new Function('Tone','getTargetVolume','setTimeout','clearTimeout', [
+  "let limiter,reverb,delay,lpf,hpf,env,sessionVolume;",
+  "let audioInitialized=false,osc=null,samplePlayer=null;",
+  "let dryGain=null,padBuffer=null,padPitchTimer=null,soundModeIndex=0;",
+  "let isTuning=true,isStopping=false;",
+  functions,
+  "return {",
+  "  cycle(mode){",
+  "    soundModeIndex=mode;initAudio();createOsc(220);",
+  "    if (!audioInitialized || [osc,samplePlayer].filter(Boolean).length!==1) throw Error('wrong active source count');",
+  "    destroyOsc();disposeAudioChain();",
+  "    return {initialized:audioInitialized, active:[osc,samplePlayer].filter(Boolean).length, isolated:sessionVolume===null};",
+  "  },",
+  "  pad(){ soundModeIndex=2;initAudio();createOsc(220); return{player:samplePlayer,gain:dryGain.gain}; },",
+  "  shift(rate){setPadPitch(rate)},",
+  "  stop(){destroyOsc();disposeAudioChain()}",
+  "};"
+].join('\n'))(Tone,()=>-3,delayed,cancel);
+const modes=[0,1,2,0,2,1,0];
 for (const mode of modes) {
-  const after = harness.cycle(mode);
-  assert.deepEqual(after, {initialized: false, sources: 0, isolated: true});
+  const state=harness.cycle(mode);
+  assert.deepEqual(state,{initialized:false,active:0,isolated:true});
 }
-assert.ok(nodes.length > 0);
-assert.ok(nodes.every(n => n.disposed === 1), 'leftover or double-disposed nodes');
-assert.equal(nodes.filter(n => ['Oscillator','Player'].includes(n.type)).length, modes.length);
-console.log('PASS: ' + modes.length + ' playback cycles, ' + nodes.length + ' nodes disposed exactly once (mock)');
+assert.ok(nodes.every(n=>n.disposed===1), 'no audio node leaks');
+assert.equal(nodes.filter(n=>n.type==='Oscillator'||n.type==='Player').length,modes.length);
+const pad=harness.pad();
+harness.shift(1.5);
+assert.equal(pad.gain.actions.at(-1).value,0.12, 'first duck the audio gain');
+assert.equal(timers.size,1, 'shift must wait until fade has started');
+assert.equal(pad.player.playbackRate,1, 'rate stays unchanged until duck');
+flush();
+assert.equal(pad.player.playbackRate,1.5, 'rate switches after the gain is reduced');
+assert.equal(pad.gain.actions.at(-1).value,1, 'gain rises after rate change');
+harness.shift(2);
+assert.equal(timers.size,1);
+harness.stop();
+assert.equal(timers.size,0, 'stop must cancel pending shift timer');
+assert.ok(nodes.every(n=>n.disposed===1), 'all repeated sources cleaned exactly once');
+console.log('PASS: 7 audio cycles, pad pitch duck/restore, no pending shift after stop, GPU reuse');
