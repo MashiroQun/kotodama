@@ -35,6 +35,12 @@
   const octaves = ['auto', 2, 3, 4, 5];
   const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
   const SOLFEGE_NAMES = ['ド', 'ド♯', 'レ', 'レ♯', 'ミ', 'ファ', 'ファ♯', 'ソ', 'ソ♯', 'ラ', 'ラ♯', 'シ'];
+  // Chakra-like colors around the 12 pitch classes. No new animation timer.
+  const PITCH_OUTLINE_COLORS = [
+    '#FF5555', '#FF8055', '#FFAB42', '#FFD45A',
+    '#E9D45B', '#57D67D', '#3ED1AF', '#36C6E6',
+    '#569FEF', '#7896FF', '#AA83F5', '#DD90E7'
+  ];
   const NATURAL_INDICES = { 0:0, 2:1, 4:2, 5:3, 7:4, 9:5, 11:6 };
   let guideAudio = null, guideUrl = null, guideUntil = 0, guideTimer = 0;
   let guidePreviousSessionType = null;
@@ -174,6 +180,15 @@
     updateControls();
   }
 
+  function setVoiceNoteOutline(frequency) {
+    const color = Number.isFinite(frequency) && frequency > 0
+      ? PITCH_OUTLINE_COLORS[pitchClass(Math.round(freqToMidi(frequency)))]
+      : '#91A5BA';
+    // The large detected-note glyph stays legible; only its outline/glow changes.
+    noteLabel.style.webkitTextStrokeColor = color;
+    noteLabel.style.textShadow = '0 0 12px ' + color + ', 0 0 27px ' + color;
+  }
+
   function updateInputLevel(input) {
     let sum = 0;
     for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
@@ -200,6 +215,7 @@
         currentGuideFrequency = targetFrequency;
         showTarget(targetFrequency);
       }
+      setVoiceNoteOutline(null);
       updateControls();
       return;
     }
@@ -223,6 +239,7 @@
 
     const deltaCents = Math.round(1200 * Math.log2(stable / targetFrequency));
     noteLabel.textContent = getNoteName(stable);
+    setVoiceNoteOutline(stable);
     frequencyLabel.textContent = stable.toFixed(1) + ' Hz';
     centsLabel.textContent = (deltaCents > 0 ? '+' : '') + deltaCents + ' cent';
     needle.style.left = (50 + Math.max(-50, Math.min(50, deltaCents)) * 0.88) + '%';
