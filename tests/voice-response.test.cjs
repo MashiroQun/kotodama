@@ -62,5 +62,5 @@ assert.equal(tracker.sample(440 * Math.pow(2, 0.51/12), 1600).noteMidi, 69,
 tracker.reset();
 assert.equal(tracker.sample(220, 2000).noteMidi, 57, 'reset must recover instantly');
 assert.match(source, /let sensitivityIndex = 1/, '8x mic gain must be the default');
-assert.match(source, /const inputSensitivity = \[4, 8, 32\]/, 'mic range must be 4/8/32x');
+assert.match(source, /const inputSensitivity = \[4, 8, 32, 64\]/, 'mic range must be 4/8/32/64x');
 console.log('PASS: selectable pitch smoothing, note hysteresis, reset, independent 8x microphone gain');
