@@ -37,11 +37,8 @@
   let smoothedMidi = null, selectedMidi = null, lastSmoothAt = 0, lastGoodPitchAt = 0;
   const inputSensitivity = [4, 8, 32];
   let sensitivityIndex = 1; // 8x starting point; 4x for strong headset mics, 32x for quiet iPads.
-  // The input gain adjusts weak microphones; a separate gate stops quiet
-  // background sounds from triggering pitch and note/color updates.
-  const MIN_VOICE_RMS = 0.028;
-  let noiseFloorRms = 0;
-  let onsetPitchHz = null, onsetFrames = 0;
+  // Keep pitch detection responsive; only the *display* is stabilized.
+  let visualCents = null, visualCentsAt = 0, visualTargetMidi = null;
   let targetFrequency = 130.81278265, baseTargetFrequency = 130.81278265;
   let lastDetectedHz = null, currentGuideFrequency = null;
   let mode = 'free', notation = 'solfege', octaveIndex = 0;
@@ -211,44 +208,15 @@
     return rms;
   }
 
-  function resetVoiceInputGate() {
-    noiseFloorRms = 0;
-    onsetPitchHz = null;
-    onsetFrames = 0;
-  }
-
-  function acceptVoicePitch(rms, rawPitch) {
-    // Learn the background only when there is no trustworthy pitch,
-    // so a voice present immediately at startup is not learned as noise.
-    // Limit learning during unusually loud bursts.
-    const gate = Math.max(MIN_VOICE_RMS, noiseFloorRms * 2.3);
-    if (rms < gate || rawPitch === null) {
-      if (rms <= 0.065) {
-        const blend = noiseFloorRms === 0 ? 0.25 : 0.10;
-        noiseFloorRms += (rms - noiseFloorRms) * blend;
-      }
-      onsetPitchHz = null;
-      onsetFrames = 0;
-      return null;
-    }
-    // Two consecutive, consistent pitch estimates reject one-frame clicks,
-    // sharp transients and accidental momentary speech-like artifacts.
-    if (onsetPitchHz !== null &&
-        Math.abs(1200 * Math.log2(rawPitch / onsetPitchHz)) < 65) {
-      onsetFrames++;
-    } else {
-      onsetFrames = 1;
-    }
-    onsetPitchHz = rawPitch;
-    return onsetFrames >= 2 ? rawPitch : null;
-  }
-
   function resetPitchFilter() {
     recent = [];
     smoothedMidi = null;
     selectedMidi = null;
     lastSmoothAt = 0;
     lastGoodPitchAt = 0;
+    visualCents = null;
+    visualCentsAt = 0;
+    visualTargetMidi = null;
   }
 
   function stabilizePitch(frequency, now) {
@@ -275,6 +243,22 @@
     lastSmoothAt = now;
     lastGoodPitchAt = now;
     return { frequency: midiToFreq(smoothedMidi), noteMidi: selectedMidi };
+  }
+
+  function stableDisplayedCents(rawCents, referenceHz, now) {
+    const referenceMidi = Math.round(freqToMidi(referenceHz));
+    // Smooth the needle and displayed cents, not the microphone input.
+    if (visualCents === null || visualTargetMidi !== referenceMidi) {
+      visualCents = rawCents;
+    } else {
+      const dt = visualCentsAt ? Math.max(12, Math.min(250, now - visualCentsAt)) : 75;
+      const tau = [100, 180, 280][responseIndex];
+      visualCents += (rawCents - visualCents) * (1 - Math.exp(-dt / tau));
+    }
+    visualTargetMidi = referenceMidi;
+    visualCentsAt = now;
+    // 2-cent steps keep the numerals calm without delaying detection.
+    return Math.round(visualCents / 2) * 2;
   }
 
   function showPitch(frequency, force = false, now = performance.now()) {
@@ -318,7 +302,9 @@
     currentGuideFrequency = targetFrequency;
     showTarget(targetFrequency);
 
-    const deltaCents = Math.round(1200 * Math.log2(stable / targetFrequency));
+    const deltaCents = stableDisplayedCents(
+      1200 * Math.log2(stable / targetFrequency), targetFrequency, now
+    );
     noteLabel.textContent = getNoteName(mode === 'free'
       ? midiToFreq(stabilized.noteMidi) : stable);
     setVoiceNoteOutline(mode === 'free' ? targetFrequency : stable);
@@ -435,11 +421,9 @@
         showPitch(null, true, now);
         return;
       }
-      // The level bar remains instantaneous; the pitch path uses a
-      // separate adaptive voice/noise gate before rendering.
-      const gate = Math.max(MIN_VOICE_RMS, noiseFloorRms * 2.3);
-      const estimated = rms >= gate ? estimatePitch(samples, context.sampleRate) : null;
-      const pitch = acceptVoicePitch(rms, estimated);
+      // Every frame reaches the original estimator, including quiet singing.
+      // Only the rendered cents and note animation are stabilized.
+      const pitch = estimatePitch(samples, context.sampleRate);
       showPitch(pitch, false, now);
       // Very large microphone gain can overload analysis. Warn without
       // silently changing the gain selected by the user.
@@ -469,7 +453,6 @@
     inputGain = null;
     analyser = null;
     samples = null;
-    resetVoiceInputGate();
     if (stream) stream.getTracks().forEach(track => track.stop());
     stream = null;
     if (context) { try { await context.close(); } catch (_) {} }
@@ -537,8 +520,7 @@
       source.connect(inputGain);
       inputGain.connect(analyser); // Never connect microphone audio to destination.
       samples = new Float32Array(analyser.fftSize);
-      resetVoiceInputGate();
-      await context.resume();
+        await context.resume();
       active = true;
       toneButton.disabled = true;
       soundButton.disabled = true;
@@ -574,7 +556,6 @@
     if (guideAudio) stopGuide();
     mode = mode === 'free' ? 'target' : 'free';
     resetPitchFilter();
-    resetVoiceInputGate();
     lastDetectedHz = null;
     showPitch(null, true);
     updateControls();
@@ -608,7 +589,6 @@
     sensitivityButton.textContent = '感度 ×' + value;
     if (inputGain) inputGain.gain.value = value;
     resetPitchFilter();
-    resetVoiceInputGate();
     showPitch(null, true);
     if (active) status.textContent = 'マイク感度 ×' + value + '（感度を上げると雑音も増えます）';
   });
