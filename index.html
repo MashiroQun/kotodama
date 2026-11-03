@@ -57,12 +57,31 @@
             #action-btn { margin-bottom: 0.8dvh; }
             #chakra-selector { margin-bottom: 0.8dvh; }
         }
-        #voice-panel { padding: 0.6dvh 0 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         #voice-panel[hidden] { display: none; }
-        #voice-readout { display: flex; justify-content: center; align-items: baseline; gap: 10px; color: #fff; }
-        #voice-note { font-size: clamp(19px, 5vw, 25px); font-weight: 700; }
-        #voice-freq, #voice-cents { font-size: 12px; }
-        #voice-status { color: #bbb; font-size: 10px; margin-top: 0.4dvh; }
+        #voice-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; width: min(94%, 410px); gap: clamp(8px, 1.5dvh, 17px); text-align: center; color: #fff; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        #voice-target-heading { font-size: clamp(12px, 2.7vw, 16px); letter-spacing: 2px; opacity: .8; }
+        #voice-target-freq { font-size: clamp(17px, 4vw, 23px); color: var(--accent-color); font-weight: 700; }
+        #voice-note { font-size: clamp(60px, 16vw, 94px); font-weight: 800; line-height: 1; letter-spacing: 1px; }
+        #voice-freq { font-size: clamp(18px, 4vw, 23px); font-variant-numeric: tabular-nums; }
+        #voice-cents { font-size: clamp(15px, 3.5vw, 20px); font-variant-numeric: tabular-nums; }
+        #voice-direction { font-size: 13px; min-height: 1.4em; opacity: .85; }
+        #voice-meter { width: 100%; height: 52px; position: relative; }
+        #voice-meter-track { position: absolute; height: 6px; top: 24px; left: 6%; right: 6%; border-radius: 6px; background: linear-gradient(90deg,#64748b 0%, #c7d2fe 42%, #53c7a9 50%, #c7d2fe 58%, #64748b 100%); }
+        #voice-meter-track::after { content: ''; position: absolute; width: 2px; height: 19px; top: -7px; left: 50%; background: #fff; }
+        #voice-needle { position: absolute; z-index: 2; left: 50%; top: 9px; width: 3px; height: 35px; background: #fff; border-radius: 4px; box-shadow: 0 0 9px #fff; transform: translateX(-50%); transition: left 95ms linear; }
+        #voice-meter-low, #voice-meter-high { position: absolute; bottom: 0; font-size: 11px; opacity: .7; }
+        #voice-meter-low { left: 3%; } #voice-meter-high { right: 3%; }
+        #voice-level { height: 5px; background: rgba(255,255,255,.15); width: 75%; border-radius: 5px; overflow: hidden; }
+        #voice-level-fill { height: 100%; background: var(--accent-color); width: 0; transition: width 90ms linear; }
+        #voice-status { min-height: 2em; font-size: 12px; opacity: .88; }
+        #btn-guide { display: none; }
+        body.voice-mode #bonji-bg, body.voice-mode #chakra-ring, body.voice-mode #yomi-display,
+        body.voice-mode #kanji-display, body.voice-mode #on-display, body.voice-mode #note-display,
+        body.voice-mode #meaning, body.voice-mode #action-btn, body.voice-mode #debug-panel,
+        body.voice-mode #bottom-utilities, body.voice-mode #btn-sound { display: none !important; }
+        body.voice-mode #btn-guide { display: block; }
+        body.voice-mode #control-panel { background: rgba(12, 12, 18, .6); }
+        body.voice-mode #chakra-selector .chakra-btn { font-size: clamp(14px, 4vw, 19px); }
         button:disabled { opacity: 0.45; cursor: not-allowed; }
         #toast-msg { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
     </style>
@@ -82,6 +101,22 @@
             <div id="kanji-display" class="kanji">地</div>
             <div id="on-display" class="on-guide">ア / [ a ]</div>
             <div id="note-display" class="note-display">C3 (ド) / 131Hz</div>
+            <section id="voice-panel" hidden aria-label="音声チューナー">
+                <div id="voice-target-heading">目標音 <strong id="voice-target-note">C3</strong></div>
+                <div id="voice-target-freq">130.8 Hz</div>
+                <div id="voice-note">—</div>
+                <div id="voice-freq">声を出してください</div>
+                <div id="voice-cents">±0 cent</div>
+                <div id="voice-meter" aria-label="目標音からのずれ">
+                    <div id="voice-meter-track"></div>
+                    <div id="voice-needle"></div>
+                    <span id="voice-meter-low">低い −50</span>
+                    <span id="voice-meter-high">+50 高い</span>
+                </div>
+                <div id="voice-direction">目標音に合わせて声を出してください</div>
+                <div id="voice-level"><div id="voice-level-fill"></div></div>
+                <div id="voice-status" aria-live="polite">マイク未使用</div>
+            </section>
         </div>
         <div id="control-panel">
             <div id="meaning">土 / 基盤 / 生命 / 会陰</div>
@@ -92,7 +127,7 @@
                 <button id="btn-tune" class="toggle-btn">TUNE: 基本</button>
                 <button id="btn-breath" class="toggle-btn">呼吸: 8秒</button>
             </div>
-            <div style="display: flex; justify-content: center; width: 100%; gap: 2%; margin-top: 2dvh;">
+            <div id="bottom-utilities" style="display: flex; justify-content: center; width: 100%; gap: 2%; margin-top: 2dvh;">
                 <button id="btn-check-update" class="toggle-btn" style="flex: 1;" onclick="checkForUpdate()">UPDATE</button>
                 <button id="btn-timer-display" class="toggle-btn" style="flex: 1; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3);" onclick="cycleTimer()">TIMER: OFF</button>
                 <button id="btn-boost" class="toggle-btn" style="flex: 1;">BOOST: ON</button>
@@ -100,10 +135,7 @@
             <div id="audio-tools">
                 <button id="btn-sound" class="toggle-btn" type="button" aria-label="音源を切り替える">音源: 三角波</button>
                 <button id="btn-voice" class="toggle-btn" type="button" aria-label="ボイスチューナーを起動">VOICE: START</button>
-            </div>
-            <div id="voice-panel" hidden aria-live="polite">
-                <div id="voice-readout"><strong id="voice-note">—</strong><span id="voice-freq">声を出してください</span><span id="voice-cents"></span></div>
-                <div id="voice-status">マイク未使用</div>
+                <button id="btn-guide" class="toggle-btn" type="button" disabled>ガイド音を鳴らす</button>
             </div>
         </div>
     </div>
@@ -197,8 +229,8 @@
         if (audioInitialized) return;
         
         // ★ユーザーがボタンを押した「直後」に初めて設定を行う（ここでContextが安全に作られる）
-        Tone.context.lookAhead = 0.1;
-        Tone.context.latencyHint = "playback";
+        Tone.context.lookAhead = 0.02;
+        Tone.context.latencyHint = "interactive";
 
         limiter = new Tone.Limiter(-1).toDestination();
         dryGain = new Tone.Gain(0).connect(limiter); // FXを通さない音源比較用
@@ -206,7 +238,7 @@
         delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
         lpf = new Tone.Filter({ frequency: 8000, type: "lowpass", rolloff: -12 }).connect(delay);
         hpf = new Tone.Filter({ frequency: 150, type: "highpass", rolloff: -24 }).connect(lpf);
-        env = new Tone.AmplitudeEnvelope({ attack: 1.5, decay: 0, sustain: 1, release: 2.5 }).connect(hpf);
+        env = new Tone.AmplitudeEnvelope({ attack: 0.25, decay: 0, sustain: 1, release: 0.30 }).connect(hpf);
         
         audioInitialized = true;
     }
@@ -232,20 +264,20 @@
         if (soundModeIndex === 2) {
             if (!padBuffer) padBuffer = makePadBuffer();
             samplePlayer = new Tone.Player({
-                url: padBuffer, loop: true, volume: -8, fadeIn: 0.10, fadeOut: 0.12
+                url: padBuffer, loop: true, volume: -3, fadeIn: 0.06, fadeOut: 0.12
             }).connect(dryGain);
             samplePlayer.playbackRate = freq / 220;
             samplePlayer.start();
-            dryGain.gain.rampTo(0.72, 0.4);
+            dryGain.gain.rampTo(1, 0.10);
         } else {
             const clean = soundModeIndex === 1;
             osc = new Tone.Oscillator({
                 type: clean ? 'sine' : 'triangle',
                 frequency: freq,
-                volume: clean ? -15 : -8
+                volume: clean ? -9 : -8
             }).connect(clean ? dryGain : env);
             osc.start();
-            if (clean) dryGain.gain.rampTo(0.72, 0.30);
+            if (clean) dryGain.gain.rampTo(1, 0.10);
         }
     }
 
@@ -381,9 +413,10 @@
             material.uniforms.uChakraId.value = data.id;
         }
         if (isTuning && !isStopping) {
-            if (osc) osc.frequency.rampTo(freq, 0.20);
+            if (osc) osc.frequency.rampTo(freq, 0.055);
             if (samplePlayer) samplePlayer.playbackRate = freq / 220;
         }
+        if (window.kotodamaVoiceTuner) window.kotodamaVoiceTuner.setTarget(freq);
     }
 
     const actionBtn = document.getElementById('action-btn');
@@ -398,10 +431,10 @@
         try {
             Tone.Destination.volume.cancelScheduledValues(Tone.now());
             env.triggerRelease();
-            if (dryGain) dryGain.gain.rampTo(0, 2.5);
-            Tone.Destination.volume.rampTo(-60, 2.5);
+            if (dryGain) dryGain.gain.rampTo(0, 0.25);
+            Tone.Destination.volume.rampTo(-60, 0.25);
 
-            await new Promise(resolve => setTimeout(resolve, 2800));
+            await new Promise(resolve => setTimeout(resolve, 320));
 
             stopLoop();
             destroyOsc();
@@ -560,6 +593,13 @@
         showToast(SOUND_NAMES[soundModeIndex] + ' に切り替えました');
     };
     window.kotodamaSoundIsRunning = () => isTuning || isStopping;
+    window.kotodamaGetVoiceTarget = () => getFreq();
+    window.kotodamaSetVoiceLabels = active => {
+        document.querySelectorAll('#chakra-selector .chakra-btn').forEach((btn, index) => {
+            btn.innerText = active ? chakraData[index].note.slice(0, -1) : String(chakraData[index].id);
+            btn.setAttribute('aria-label', active ? '目標音 ' + chakraData[index].note : 'チャクラ ' + chakraData[index].id);
+        });
+    };
     window.kotodamaStopSound = async () => {
         if (isTuning || isStopping) {
             if (isStopping) return;
