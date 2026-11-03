@@ -168,7 +168,7 @@
                 <button id="btn-sound" class="toggle-btn" type="button" aria-label="音源を切り替える">音源: 三角波</button>
                 <button id="btn-voice" class="toggle-btn" type="button" aria-label="ボイスチューナーを起動">VOICE: START</button>
                 <button id="btn-guide" class="toggle-btn" type="button" disabled>ガイド音を鳴らす</button>
-                <button id="btn-mic-gain" class="toggle-btn" type="button" aria-label="マイク感度を切り替える">感度 ×8</button>
+                <button id="btn-mic-gain" class="toggle-btn" type="button" aria-label="マイク感度を切り替える">感度 ×16</button>
                 <button id="btn-voice-smoothing" class="toggle-btn" type="button" aria-label="音程表示の追従速度を切り替える">追従: 安定</button>
             </div>
         </div>
@@ -276,9 +276,9 @@
     let boostOn = true;
     function getTargetVolume() {
         const base = isWindows ? -12 : -3;
-        // Approx. 2x waveform amplitude when BOOST is on (+6dB).
-        // Master limiter remains the final stage to avoid clipping.
-        return boostOn ? base + 6 : base - 20;
+        // BOOST starts +9dB above the base level (+3dB versus the previous build).
+        // The final master limiter protects against excessive signal peaks.
+        return boostOn ? base + 9 : base - 20;
     }
 
     const bonjiEl = document.getElementById('bonji-bg');
@@ -322,7 +322,7 @@
         Tone.context.latencyHint = "interactive";
 
         // New output chain for each playback session. Do not reuse previous FX tails.
-        // Gain before limiter, so +6dB BOOST cannot bypass the output limiter.
+        // Gain before limiter; master BOOST cannot bypass the output limiter.
         limiter = new Tone.Limiter(-1).toDestination();
         sessionVolume = new Tone.Volume(getTargetVolume()).connect(limiter);
         dryGain = new Tone.Gain(0).connect(sessionVolume); // FXを通さない音源比較用
