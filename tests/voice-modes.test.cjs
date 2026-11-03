@@ -13,6 +13,7 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   const classes = new Set();
   let stoppedTracks = 0, audioPlayCalls = 0, noteIndex = -1;
   let labels = null, wavBlob = null, lastObjectURL = 0;
+  const createdInputGains = [];
   function el(id) {
     if (!elements.has(id)) elements.set(id, {
       id, textContent: '', style: {}, disabled: false, hidden: id === 'voice-panel', handlers: {},
@@ -28,7 +29,7 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   class FakeAudioContext {
     constructor() { this.state = 'running'; this.sampleRate = 48000; this.currentTime = 1; }
     createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
-    createGain() { return { gain: { value: 1 }, connect() {}, disconnect() {} }; }
+    createGain() { const node = { gain: { value: 1 }, connect() {}, disconnect() {} }; createdInputGains.push(node); return node; }
     createAnalyser() { return {
       fftSize: 4096,
       getFloatTimeDomainData(samples) {
@@ -85,6 +86,7 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   for (let i = 0; i < 12; i++) await Promise.resolve();
   assert.equal(engine.active, true);
   assert.equal(classes.has('voice-mode'), true);
+  assert.equal(createdInputGains[0].gain.value, 16, 'mic input begins at 16x');
   assert.equal(el('btn-voice-octave').disabled, true);
   el('btn-voice-smoothing').handlers.click();
   assert.equal(engine.response, '敏感');
@@ -93,6 +95,14 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   el('btn-voice-smoothing').handlers.click();
   assert.equal(engine.response, '安定');
   assert.equal(el('btn-mic-gain').textContent, '', 'response must not touch input gain');
+  assert.equal(createdInputGains[0].gain.value, 16, 'pitch response leaves mic sensitivity alone');
+  el('btn-mic-gain').handlers.click();
+  assert.equal(createdInputGains[0].gain.value, 32, '16x to 32x');
+  assert.equal(el('btn-mic-gain').textContent, '感度 ×32');
+  el('btn-mic-gain').handlers.click();
+  assert.equal(createdInputGains[0].gain.value, 64, '32x to 64x');
+  el('btn-mic-gain').handlers.click();
+  assert.equal(createdInputGains[0].gain.value, 16, '64x wraps to 16x');
   assert.equal(labels.notation, 'solfege');
   frames.shift()(1100);
   assert.equal(el('voice-note').textContent, 'ラ3');
