@@ -11,7 +11,7 @@ assert.ok(!source.includes('acceptVoicePitch'), 'do not require a second confirm
 assert.ok(!source.includes('noiseFloorRms'), 'do not learn a floor that hides weak voices');
 assert.match(source, /const pitch = estimatePitch\(samples, context\.sampleRate\);/,
   'each audio frame should reach the original pitch detector');
-assert.match(source, /const inputSensitivity = \[4, 8, 32\]/);
+assert.match(source, /const inputSensitivity = \[4, 8, 32, 64\]/);
 assert.match(source, /let sensitivityIndex = 1/);
 assert.match(source, /let responseIndex = 2/);
 
