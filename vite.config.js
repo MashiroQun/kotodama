@@ -7,7 +7,8 @@ export default defineConfig({
       // Rin Player-style update UI: stage a new worker until the user accepts.
       // On a fresh app launch, the app may apply a waiting update automatically.
       registerType: 'prompt',
-      injectRegister: 'script',
+      // Registration is managed by pwa-update.js, including first-run checks.
+      injectRegister: false,
       workbox: {
         skipWaiting: false,
         clientsClaim: true,
