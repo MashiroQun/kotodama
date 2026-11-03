@@ -367,12 +367,13 @@
             padPitchTimer = null;
         }
         const player = samplePlayer;
-        dryGain.gain.rampTo(0.12, 0.035);
+        // Start on the current audio clock, without the normal lookAhead delay.
+        dryGain.gain.rampTo(0.12, 0.025, Tone.immediate());
         padPitchTimer = setTimeout(() => {
             padPitchTimer = null;
             if (player !== samplePlayer || !isTuning || isStopping || !dryGain) return;
             player.playbackRate = rate;
-            dryGain.gain.rampTo(1, 0.08);
+            dryGain.gain.rampTo(1, 0.06, Tone.immediate());
         }, 45);
     }
 
