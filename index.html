@@ -305,6 +305,7 @@
     let samplePlayer = null;
     let dryGain = null;
     let padBuffer = null;
+    let padPitchTimer = null;
     let soundModeIndex = 0; // 0: legacy triangle+FX, 1: clean sine, 2: pre-rendered soft pad
     const SOUND_NAMES = ['三角波', '正弦波', 'シンセ'];
 
@@ -312,8 +313,9 @@
         if (audioInitialized) return;
         
         // ★ユーザーがボタンを押した「直後」に初めて設定を行う（ここでContextが安全に作られる）
-        Tone.context.lookAhead = 0.02;
-        Tone.context.latencyHint = "interactive";
+        // Keep the same AudioContext and its interactive output route.
+        // Updating latencyHint after creation does not resize the hardware buffer.
+        Tone.context.lookAhead = 0.035;
 
         // New output chain for each playback session. Do not reuse previous FX tails.
         // Gain before limiter; master BOOST cannot bypass the output limiter.
@@ -355,6 +357,25 @@
         return buffer;
     }
 
+    // A fast mute/switch/fade protects the buffer player's playback-rate
+    // transition against phase discontinuities on iOS. Never recreate its buffer
+    // or the audio graph just to change a note.
+    function setPadPitch(rate) {
+        if (!samplePlayer || !dryGain) return;
+        if (padPitchTimer !== null) {
+            clearTimeout(padPitchTimer);
+            padPitchTimer = null;
+        }
+        const player = samplePlayer;
+        dryGain.gain.rampTo(0.12, 0.035);
+        padPitchTimer = setTimeout(() => {
+            padPitchTimer = null;
+            if (player !== samplePlayer || !isTuning || isStopping || !dryGain) return;
+            player.playbackRate = rate;
+            dryGain.gain.rampTo(1, 0.08);
+        }, 45);
+    }
+
     function createOsc(freq) {
         destroyOsc();
         if (!env) initAudio();
@@ -379,6 +400,10 @@
     }
 
     function destroyOsc() {
+        if (padPitchTimer !== null) {
+            clearTimeout(padPitchTimer);
+            padPitchTimer = null;
+        }
         if (osc) {
             try { osc.stop(); osc.dispose(); } catch(e) {}
             osc = null;
@@ -511,7 +536,7 @@
         }
         if (isTuning && !isStopping) {
             if (osc) osc.frequency.rampTo(freq, 0.055);
-            if (samplePlayer) samplePlayer.playbackRate = freq / 220;
+            if (samplePlayer) setPadPitch(freq / 220);
         }
         if (window.kotodamaVoiceTuner) window.kotodamaVoiceTuner.setTarget(window.kotodamaGetVoiceTarget());
     }
@@ -536,16 +561,11 @@
             destroyOsc();
             disposeAudioChain();
 
-            if (renderer) {
-                renderer.dispose();
-                const container = document.getElementById('webgl-container');
-                if (container && container.contains(renderer.domElement)) {
-                    container.removeChild(renderer.domElement);
-                }
-                renderer = null;
-                material = null;
-                scene = null;
-                particleSystem = null;
+            // Keep the WebGL context and shaders for the next sound session.
+            // Recreating them on every switch spikes main-thread/GPU work.
+            if (renderer && material) {
+                material.uniforms.uOpacity.value = 0;
+                renderer.clear();
             }
 
             // Keep the context running until iOS actually backgrounds the page.
@@ -757,9 +777,21 @@
     });
 
     window.addEventListener('pagehide', () => {
-        if (!audioInitialized) return; // ← 追加：まだスタート押してないなら無視
+        // Page exit is the right place for final GPU cleanup; never do this
+        // during ordinary instrument changes.
+        stopLoop();
         destroyOsc();
         disposeAudioChain();
+        if (particleSystem) particleSystem.geometry.dispose();
+        if (material) material.dispose();
+        if (renderer) {
+            renderer.dispose();
+            const container = document.getElementById('webgl-container');
+            if (container && container.contains(renderer.domElement)) {
+                container.removeChild(renderer.domElement);
+            }
+        }
+        renderer = material = scene = particleSystem = camera = null;
         const raw = Tone.getContext().rawContext;
         if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
             raw.suspend().catch(() => {});
