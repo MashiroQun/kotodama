@@ -778,7 +778,8 @@
 
     window.addEventListener('pagehide', () => {
         // Page exit is the right place for final GPU cleanup; never do this
-        // during ordinary instrument changes.
+        // during ordinary instrument changes. Do not create an AudioContext on exit.
+        const hadAudio = audioInitialized;
         stopLoop();
         destroyOsc();
         disposeAudioChain();
@@ -792,9 +793,11 @@
             }
         }
         renderer = material = scene = particleSystem = camera = null;
-        const raw = Tone.getContext().rawContext;
-        if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
-            raw.suspend().catch(() => {});
+        if (hadAudio) {
+            const raw = Tone.getContext().rawContext;
+            if (raw && typeof raw.suspend === 'function' && raw.state === 'running') {
+                raw.suspend().catch(() => {});
+            }
         }
     });
 
