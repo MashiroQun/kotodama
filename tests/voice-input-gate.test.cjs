@@ -1,47 +1,52 @@
 // node tests/voice-input-gate.test.cjs
-// Verify the actual input-gating functions without a microphone or browser.
+// Regression for quiet voice pickup: do not gate the detected note again.
+// UI-only smoothing is covered separately below.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'utf8');
 
+assert.ok(!source.includes('MIN_VOICE_RMS'), 'do not reinstate a higher noise gate');
+assert.ok(!source.includes('acceptVoicePitch'), 'do not require a second confirmed onset frame');
+assert.ok(!source.includes('noiseFloorRms'), 'do not learn a floor that hides weak voices');
+assert.match(source, /const pitch = estimatePitch\(samples, context\.sampleRate\);/,
+  'each audio frame should reach the original pitch detector');
+assert.match(source, /const inputSensitivity = \[4, 8, 32\]/);
+assert.match(source, /let sensitivityIndex = 1/);
+assert.match(source, /let responseIndex = 2/);
+
 function extract(name) {
-  const found = new RegExp('function ' + name + '\\([^)]*\\)\\s*\\{').exec(source);
-  assert.ok(found, 'missing ' + name);
-  let depth=0;
-  for(let i=found.index+found[0].length-1;i<source.length;i++){
-    if(source[i]==='{') depth++;
-    if(source[i]==='}') depth--;
-    if(depth===0) return source.slice(found.index,i+1);
+  const start = new RegExp('function ' + name + '\\([^)]*\\)\\s*\\{').exec(source);
+  assert.ok(start, 'missing function ' + name);
+  let depth = 0;
+  for (let i = start.index + start[0].length - 1; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    if (source[i] === '}') depth--;
+    if (!depth) return source.slice(start.index, i + 1);
   }
-  throw new Error('unbalanced '+name);
+  throw new Error('Unbalanced ' + name);
 }
-const makeGate = new Function([
-  'const MIN_VOICE_RMS = 0.028;',
-  'let noiseFloorRms=0, onsetPitchHz=null, onsetFrames=0;',
-  extract('resetVoiceInputGate'), extract('acceptVoicePitch'),
-  'return {test:(rms,hz)=>acceptVoicePitch(rms,hz), reset:resetVoiceInputGate, floor:()=>noiseFloorRms};'
-].join('\n'));
+const estimate = new Function(extract('estimatePitch') + '\nreturn estimatePitch;')();
+for (const sampleRate of [44100, 48000]) {
+  // RMS≈0.017, above the original 0.014 detector floor but below the
+  // previously added 0.028 noise gate. Must be recognized immediately.
+  const weakVoice = Float32Array.from({ length: 4096 }, (_, i) =>
+    0.024 * Math.sin(2 * Math.PI * 220 * i / sampleRate));
+  const hz = estimate(weakVoice, sampleRate);
+  assert.ok(Number.isFinite(hz) && Math.abs(1200 * Math.log2(hz / 220)) < 15,
+    'quiet 220 Hz singing should be detected on the first frame');
+}
 
-const gate = makeGate();
-assert.equal(gate.test(.018, 220), null, 'quiet but tonal noise should be rejected');
-assert.equal(gate.test(.046, 220), null, 'first pitch frame is not enough');
-assert.equal(gate.test(.046, 220), 220, 'second consistent frame confirms the voice');
-assert.equal(gate.test(.046, 294), null, 'sudden unrelated pitch needs a new onset');
-assert.equal(gate.test(.046, 294), 294, 'new note accepted once confirmed');
-assert.equal(gate.test(.008, null), null, 'silence clears the onset');
-assert.equal(gate.test(.046, 294), null, 'after silence the onset starts again');
-assert.equal(gate.test(.046, 294), 294, 'a real sustained note can re-enter');
-gate.reset();
-assert.equal(gate.floor(),0,'gain switch resets learned noise floor');
-
-// Ambient broadband noise builds an adaptive floor without a pitched signal.
-for (let i=0; i<26; i++) gate.test(.033, null);
-assert.ok(gate.floor() > .025 && gate.floor() < .035, 'should learn modest ambient noise');
-assert.equal(gate.test(.045, 220), null, 'noise-relative gate prevents weak false tone');
-assert.equal(gate.test(.11, 220), null, 'loud onset still needs confirmation');
-assert.equal(gate.test(.11, 220), 220, 'loud sustained voice must pass adaptive gate');
-assert.match(source,/const inputSensitivity = \[4, 8, 32\]/,'keep AirPods/iPad gains');
-assert.match(source,/let sensitivityIndex = 1/,'keep 8x initial gain');
-assert.match(source,/let responseIndex = 2/,'keep stable pitch tracking default');
-console.log('PASS: weak noise, two-frame onset, note change, silence reset, adaptive ambient noise, 4/8/32x gain');
+const stable = new Function([
+  'let visualCents=null,visualCentsAt=0,visualTargetMidi=null,responseIndex=2;',
+  extract('freqToMidi'), extract('stableDisplayedCents'),
+  'return (c,f,t) => stableDisplayedCents(c,f,t);'
+].join('\n'))();
+assert.equal(stable(0, 220, 1000), 0);
+const slightMove = stable(24, 220, 1075);
+assert.ok(slightMove > 0 && slightMove < 24,
+  'a moving pitch should move the display more gently');
+assert.equal(slightMove % 2, 0, 'cents display moves in readable 2-cent steps');
+const noteSwitch = stable(12, 246.94, 1150);
+assert.equal(noteSwitch, 12, 'new target notes should not drag the previous needle position');
+console.log('PASS: weak first-frame detection restored; display smoothing remains independent');
