@@ -21,7 +21,7 @@ const context = {
 const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'utf8');
 vm.runInNewContext(script, context, { filename: 'voice-tuner.js' });
 const detect = windowMock.kotodamaVoiceTuner.estimatePitch;
-const pitches = [82.4, 110, 130.8128, 146.832, 196, 220, 261.6256, 440, 523.251, 880];
+const pitches = [65.4064, 82.4, 110, 130.8128, 146.832, 196, 220, 261.6256, 440, 523.251, 880, 987.7666];
 
 for (const sr of [44100, 48000]) {
   for (const f of pitches) {
@@ -51,4 +51,4 @@ for (const sr of [44100, 48000]) {
   assert.ok(Math.abs(1200 * Math.log2(detect(boosted, sr) / frequency)) < 15,
     '8x boost should recover low-level 220Hz signal');
 }
-console.log('PASS: 28 voice pitch cases (44.1/48kHz; sine, harmonics, silence, low-level microphone gain)');
+console.log('PASS: 32 voice pitch cases (44.1/48kHz; sine, harmonics, silence, low-level microphone gain)');
