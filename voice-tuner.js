@@ -142,14 +142,12 @@
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('HTTPSとマイク対応ブラウザーが必要です');
       }
-      // The sound generator is stopped before microphone capture on purpose.
-      // Especially important for Safari/iOS echo-cancellation and feedback.
-      if (typeof window.kotodamaStopSound === 'function') {
-        await window.kotodamaStopSound();
+      // On iOS, ask for microphone access in the original click gesture.
+      // Waiting for a 2.8-second audio fade before getUserMedia can prevent
+      // Safari from recognizing the interaction as user-initiated.
+      if (typeof window.kotodamaSoundIsRunning === 'function' && window.kotodamaSoundIsRunning()) {
+        throw new Error('先に TUNING STOP で音を停止してから、もう一度VOICEを押してください');
       }
-      // stopTuning() re-enables its button on completion.
-      toneButton.disabled = true;
-      soundButton.disabled = true;
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
         video: false
