@@ -175,7 +175,8 @@
     const selected = pitchClass(midi);
     window.kotodamaSetVoiceSelection(
       Object.prototype.hasOwnProperty.call(NATURAL_INDICES, selected)
-        ? NATURAL_INDICES[selected] : -1
+        ? NATURAL_INDICES[selected] : -1,
+      PITCH_OUTLINE_COLORS[selected]
     );
   }
 
@@ -195,7 +196,10 @@
     const color = Number.isFinite(frequency) && frequency > 0
       ? PITCH_OUTLINE_COLORS[pitchClass(Math.round(freqToMidi(frequency)))]
       : '#91A5BA';
-    // The large detected-note glyph stays legible; only its outline/glow changes.
+    // Static voice labels stay neutral; only the detected note, frequency,
+    // cents, and corresponding natural-note button use pitch-class color.
+    panel.style.setProperty('--voice-pitch-color',
+      Number.isFinite(frequency) && frequency > 0 ? color : '#D9E1EC');
     noteLabel.style.webkitTextStrokeColor = color;
     noteLabel.style.textShadow = '0 0 12px ' + color + ', 0 0 27px ' + color;
   }
