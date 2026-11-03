@@ -234,6 +234,12 @@
 
   async function start() {
     if (active || starting) return;
+    // Do not hide the meditation stop button while its sound is playing.
+    if (typeof window.kotodamaSoundIsRunning === 'function' && window.kotodamaSoundIsRunning()) {
+      const message = '先に TUNING STOP で音を停止してからVOICEを開始してください';
+      if (typeof window.showToast === 'function') window.showToast(message);
+      return;
+    }
     starting = true;
     button.disabled = true;
     toneButton.disabled = true;
@@ -253,9 +259,6 @@
       // On iOS, ask for microphone access in the original click gesture.
       // Waiting for a 2.8-second audio fade before getUserMedia can prevent
       // Safari from recognizing the interaction as user-initiated.
-      if (typeof window.kotodamaSoundIsRunning === 'function' && window.kotodamaSoundIsRunning()) {
-        throw new Error('先に TUNING STOP で音を停止してから、もう一度VOICEを押してください');
-      }
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
         video: false
