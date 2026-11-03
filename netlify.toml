@@ -1,0 +1,18 @@
+# The deploy preview must serve the Vite build, not the repository root.
+# Vite copies public/update-recovery.html to dist/update-recovery.html.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[headers]]
+  for = "/update-recovery.html"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, max-age=0, must-revalidate"
