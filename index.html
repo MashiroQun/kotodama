@@ -20,45 +20,49 @@
     <style>
         :root { --bg-color: #000000; --text-color: #FFFFFF; --accent-color: #FF3333; }
         
-        html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; touch-action: none; }
+        html, body { margin: 0; padding: 0; width: 100%; height: calc(var(--vh, 1vh) * 100); position: fixed; background-color: var(--bg-color); color: var(--text-color); font-family: 'Inter', sans-serif; font-weight: 100; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: rgba(0, 0, 0, 0.8); -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3); text-shadow: 0 0 30px rgba(0,0,0,1), 0 0 20px var(--accent-color); opacity: 0.4; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
-        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 4px solid rgba(255, 255, 255, 0.15); border-radius: 50%; box-shadow: 0 0 30px var(--accent-color); z-index: -1; opacity: 0.4; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
+        #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: rgba(255,255,255,0.09); -webkit-text-stroke: 1.4px rgba(255,255,255,0.65); text-shadow: 0 0 9px rgba(255,255,255,0.45), 0 0 22px var(--accent-color), 0 0 48px var(--accent-color); opacity: 0.66; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
+        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 3px solid rgba(255,255,255,0.54); border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.45), 0 0 23px var(--accent-color), 0 0 58px var(--accent-color), inset 0 0 17px var(--accent-color); z-index: -1; opacity: 0.84; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
         
-        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 5dvh) + 2dvh); padding-bottom: calc(env(safe-area-inset-bottom, 2dvh) + 1dvh); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 30%, transparent 70%, rgba(0,0,0,0.8)); pointer-events: none; }
+        #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.46), transparent 31%, transparent 68%, rgba(0,0,0,0.75)); pointer-events: none; touch-action: none; }
         
         #ui-layer > * { pointer-events: auto; }
         header { flex: 0 0 auto; text-align: center; margin-top: 1dvh; }
         .title-main { font-family: 'Noto Sans JP', sans-serif; font-size: clamp(20px, 6vw, 26px); font-weight: 900; letter-spacing: 5px; color: #FFF; }
         .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
         
-        #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 0; }
+        #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 0; padding-block: clamp(5px, 1.15dvh, 13px); box-sizing: border-box; }
         .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1dvh; }
         .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(80px, 25dvh, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1dvh; line-height: 1; }
         .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
         .note-display { font-size: clamp(14px, 4vw, 18px); font-weight: 700; font-family:'Inter', sans-serif; letter-spacing: 2px; color: #FFF; height: 1.5em; display: flex; align-items: center; justify-content: center; margin-top: 0.5vh; }
         
-        #control-panel { flex: 0 0 auto; background-color: rgba(15, 15, 15, 0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 3% 5%; text-align: center; width: 100%; max-width: 400px; margin-bottom: 1dvh; }
-        #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.9; margin-bottom: 1.5dvh; letter-spacing: 1px; color: #CCC; font-family: 'Noto Sans JP', sans-serif;}
-        #chakra-selector { display: flex; justify-content: space-between; width: 100%; gap: 2%; margin-bottom: 1.5dvh; }
-        .chakra-btn { flex: 1; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.7); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
+        #control-panel { flex: 0 0 auto; display: flex; flex-direction: column; gap: clamp(9px, 1.45dvh, 15px); background: rgba(15,15,19,0.38); border: 1px solid rgba(255,255,255,0.14); border-radius: 24px; padding: clamp(15px, 2dvh, 22px) clamp(16px, 5vw, 24px); box-sizing: border-box; text-align: center; width: 100%; max-width: 440px; margin: 0 auto; }
+        #control-panel > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+        #meaning { font-size: clamp(12px, 3.5vw, 15px); opacity: 0.94; letter-spacing: 1px; color: #DDD; font-family: 'Noto Sans JP', sans-serif; line-height: 1.55; }
+        #chakra-selector { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: center; justify-items: center; width: 100%; gap: clamp(3px, 1vw, 9px); }
+        .chakra-btn { width: 100%; aspect-ratio: 1 / 1; max-width: 45px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.1); cursor: pointer; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.82); font-family: 'Inter', sans-serif; font-weight: 700; font-size: clamp(12px, 3.5vw, 16px); padding: 0; transition: all 0.2s;}
         .chakra-btn.active { border-color: #FFF; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); color: #FFF; }
-        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); padding: 1.5dvh 5vw; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; margin-bottom: 1.5dvh; touch-action: manipulation; }
+        #action-btn { background: rgba(0,0,0,0.8); border: 2px solid var(--accent-color); color: var(--accent-color); min-height: 44px; padding: clamp(9px, 1.6dvh, 15px) 10px; border-radius: 35px; font-size: clamp(16px, 5vw, 20px); font-family: 'Inter', sans-serif; letter-spacing: 3px; font-weight: 700; cursor: pointer; transition: all 0.2s; width: 100%; touch-action: none; }
         #action-btn:active { background-color: var(--accent-color); color: #000; transform: scale(0.97); }
         #debug-panel { display: flex; justify-content: space-between; gap: 2%; width: 100%; }
-        .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2dvh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
+        .toggle-btn { flex: 1; min-width: 0; min-height: 42px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(9px, 2.5vw, 12px); line-height: 1.25; padding: 9px 5px; border-radius: 9px; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; letter-spacing: 0.15px; touch-action: none; }
         .toggle-btn:active { background: rgba(255,255,255,0.3); }
-        #audio-tools { display: flex; gap: 2%; margin-top: 0.8dvh; width: 100%; }
-        @media (max-height: 760px) {
-            #ui-layer { padding-top: calc(env(safe-area-inset-top, 0px) + 0.6dvh); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5dvh); }
-            #control-panel { padding-top: 2%; padding-bottom: 2%; margin-bottom: 0; }
-            #meaning { margin-bottom: 0.8dvh; }
-            #action-btn { margin-bottom: 0.8dvh; }
-            #chakra-selector { margin-bottom: 0.8dvh; }
+        #debug-panel, #bottom-utilities { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
+        #audio-tools { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
+        body.voice-mode #audio-tools { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        #control-panel .toggle-btn { width: 100%; }
+        #ui-layer, #control-panel, #central-node, button, .chakra-btn, .toggle-btn { touch-action: none; }
+        @media (max-height: 720px) {
+            #ui-layer { padding-top: calc(env(safe-area-inset-top, 0px) + 7px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7px); }
+            #control-panel { gap: 7px; padding-block: 11px; }
+            #control-panel .toggle-btn { min-height: 34px; padding-block: 6px; }
+            #central-node { padding-block: 4px; }
         }
         #voice-panel[hidden] { display: none; }
-        #voice-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; width: min(94%, 410px); gap: clamp(8px, 1.5dvh, 17px); text-align: center; color: #fff; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        #voice-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; width: min(94%, 410px); gap: clamp(10px, 1.8dvh, 19px); padding-block: clamp(6px, 1.2dvh, 14px); box-sizing: border-box; text-align: center; color: #fff; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         #voice-target-heading { font-size: clamp(12px, 2.7vw, 16px); letter-spacing: 2px; opacity: .8; }
         #voice-target-freq { font-size: clamp(17px, 4vw, 23px); color: var(--accent-color); font-weight: 700; }
         #voice-note { font-size: clamp(60px, 16vw, 94px); font-weight: 800; line-height: 1; letter-spacing: 1px; }
@@ -75,16 +79,15 @@
         #voice-level-fill { height: 100%; background: var(--accent-color); width: 0; transition: width 90ms linear; }
         #voice-status { min-height: 2em; font-size: 12px; opacity: .88; }
         #btn-guide, #btn-mic-gain { display: none; }
-        #voice-options { display: none; gap: 2%; margin-bottom: 1dvh; width: 100%; }
-        #voice-options .toggle-btn { min-height: 35px; }
-        body.voice-mode #voice-options { display: flex; }
-        body.voice-mode #voice-options #btn-voice-mode { flex: 1.25; }
+        #voice-options { display: none; grid-template-columns: repeat(3, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
+        #voice-options .toggle-btn { min-height: 42px; }
+        body.voice-mode #voice-options { display: grid; }
         body.voice-mode #bonji-bg, body.voice-mode #chakra-ring, body.voice-mode #yomi-display,
         body.voice-mode #kanji-display, body.voice-mode #on-display, body.voice-mode #note-display,
         body.voice-mode #meaning, body.voice-mode #action-btn, body.voice-mode #debug-panel,
         body.voice-mode #bottom-utilities, body.voice-mode #btn-sound { display: none !important; }
         body.voice-mode #btn-guide, body.voice-mode #btn-mic-gain { display: block; }
-        body.voice-mode #control-panel { background: rgba(12, 12, 18, .6); }
+        body.voice-mode #control-panel { background: rgba(12,12,18,.66); gap: clamp(12px, 2dvh, 19px); padding-block: clamp(18px, 2.5dvh, 26px); }
         body.voice-mode #chakra-selector .chakra-btn { font-size: clamp(14px, 4vw, 19px); }
         button:disabled { opacity: 0.45; cursor: not-allowed; }
         #toast-msg { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
@@ -492,7 +495,7 @@
 
             lastTimerStr = "";
 
-            bonjiEl.style.opacity = '0.4';
+            bonjiEl.style.opacity = '0.66';
             ringEl.style.transform = 'translate(-50%, -50%) scale(0.5)';
 
             if (timerEl) {
@@ -589,9 +592,9 @@
         lastRenderRealTime = now;
         material.uniforms.uTime.value    = shaderAccumulatedTime;
         material.uniforms.uPulse.value   = pulse;
-        material.uniforms.uOpacity.value = 0.6 * alpha;
+        material.uniforms.uOpacity.value = (0.75 + 0.10 * pulse) * alpha;
 
-        bonjiEl.style.opacity  = (0.3 + pulse * 0.5) * alpha;
+        bonjiEl.style.opacity  = (0.55 + pulse * 0.35) * alpha;
         ringEl.style.transform = "translate(-50%, -50%) scale(" + (0.5 + pulse * 0.5) + ")";
         renderer.render(scene, camera);
     }
