@@ -50,6 +50,13 @@
         .toggle-btn { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF; font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(8px, 2.2vw, 11px); padding: 1.2dvh 0; border-radius: 8px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; touch-action: manipulation; }
         .toggle-btn:active { background: rgba(255,255,255,0.3); }
         #audio-tools { display: flex; gap: 2%; margin-top: 0.8dvh; width: 100%; }
+        @media (max-height: 760px) {
+            #ui-layer { padding-top: calc(env(safe-area-inset-top, 0px) + 0.6dvh); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5dvh); }
+            #control-panel { padding-top: 2%; padding-bottom: 2%; margin-bottom: 0; }
+            #meaning { margin-bottom: 0.8dvh; }
+            #action-btn { margin-bottom: 0.8dvh; }
+            #chakra-selector { margin-bottom: 0.8dvh; }
+        }
         #voice-panel { padding: 0.6dvh 0 0; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         #voice-panel[hidden] { display: none; }
         #voice-readout { display: flex; justify-content: center; align-items: baseline; gap: 10px; color: #fff; }
@@ -57,7 +64,7 @@
         #voice-freq, #voice-cents { font-size: 12px; }
         #voice-status { color: #bbb; font-size: 10px; margin-top: 0.4dvh; }
         button:disabled { opacity: 0.45; cursor: not-allowed; }
-        #toast-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
+        #toast-msg { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%) translateY(-100px); background: rgba(255,255,255,0.95); color: #000; padding: 12px 24px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; z-index: 9999; transition: all 0.4s; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -225,7 +232,7 @@
         if (soundModeIndex === 2) {
             if (!padBuffer) padBuffer = makePadBuffer();
             samplePlayer = new Tone.Player({
-                url: padBuffer, loop: true, volume: -13, fadeIn: 0.06, fadeOut: 0.12
+                url: padBuffer, loop: true, volume: -8, fadeIn: 0.10, fadeOut: 0.12
             }).connect(dryGain);
             samplePlayer.playbackRate = freq / 220;
             samplePlayer.start();
@@ -238,7 +245,7 @@
                 volume: clean ? -15 : -8
             }).connect(clean ? dryGain : env);
             osc.start();
-            if (clean) dryGain.gain.rampTo(0.72, 0.4);
+            if (clean) dryGain.gain.rampTo(0.72, 0.30);
         }
     }
 
@@ -374,7 +381,7 @@
             material.uniforms.uChakraId.value = data.id;
         }
         if (isTuning && !isStopping) {
-            if (osc) osc.frequency.rampTo(freq, 1.0);
+            if (osc) osc.frequency.rampTo(freq, 0.20);
             if (samplePlayer) samplePlayer.playbackRate = freq / 220;
         }
     }
@@ -552,6 +559,7 @@
         document.getElementById('btn-sound').innerText = '音源: ' + SOUND_NAMES[soundModeIndex];
         showToast(SOUND_NAMES[soundModeIndex] + ' に切り替えました');
     };
+    window.kotodamaSoundIsRunning = () => isTuning || isStopping;
     window.kotodamaStopSound = async () => {
         if (isTuning || isStopping) {
             if (isStopping) return;
@@ -638,6 +646,6 @@
     updateAudioAndUI();
 
 </script>
-<script src="./voice-tuner.js"></script>
+<script type="module" src="./voice-tuner.js"></script>
 </body>
 </html>
