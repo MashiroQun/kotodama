@@ -14,6 +14,7 @@
   const actions = document.getElementById('update-modal-actions');
   const closeButton = document.getElementById('update-button-close');
   const applyButton = document.getElementById('update-button-apply');
+  const recoveryHelp = document.getElementById('update-recovery-help');
 
   if (!modal || !icon || !title || !message || !actions || !closeButton || !applyButton) return;
 
@@ -53,6 +54,9 @@
     closeButton.hidden = entry[3] === null;
     applyButton.hidden = entry[3] !== 'apply';
     closeButton.textContent = state === 'available' ? 'あとで' : 'OK';
+    if (recoveryHelp) {
+      recoveryHelp.hidden = !['unsupported','error','installing','stalled'].includes(state);
+    }
     modal.hidden = false;
   }
 
