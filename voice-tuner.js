@@ -10,11 +10,19 @@
   const noteLabel = document.getElementById('voice-note');
   const frequencyLabel = document.getElementById('voice-freq');
   const centsLabel = document.getElementById('voice-cents');
+  const targetNote = document.getElementById('voice-target-note');
+  const targetFrequencyLabel = document.getElementById('voice-target-freq');
+  const needle = document.getElementById('voice-needle');
+  const direction = document.getElementById('voice-direction');
+  const levelFill = document.getElementById('voice-level-fill');
+  const guideButton = document.getElementById('btn-guide');
   if (!button || !panel) return;
 
   let stream = null, context = null, source = null, analyser = null;
   let samples = null, frameId = 0, lastScan = 0, active = false, starting = false;
   let recent = [];
+  let targetFrequency = 130.81278265;
+  let guideOsc = null, guideGain = null, guideUntil = 0, guideTimer = 0;
   const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
   // Lightweight YIN-style cumulative mean normalized difference.
@@ -71,35 +79,125 @@
     return Number.isFinite(frequency) && frequency >= 80 && frequency <= 900 ? frequency : null;
   }
 
+  function getNoteName(frequency) {
+    if (!Number.isFinite(frequency) || frequency <= 0) return '—';
+    const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
+    return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+  }
+
+  function setTarget(frequency) {
+    if (!Number.isFinite(frequency) || frequency <= 0) return;
+    targetFrequency = frequency;
+    targetNote.textContent = getNoteName(frequency);
+    targetFrequencyLabel.textContent = frequency.toFixed(1) + ' Hz';
+    if (!recent.length) {
+      needle.style.left = '50%';
+      direction.textContent = '目標音に合わせて声を出してください';
+    }
+  }
+
+  function updateInputLevel(input) {
+    let sum = 0;
+    for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+    const rms = Math.sqrt(sum / input.length);
+    levelFill.style.width = Math.min(100, Math.round(rms * 550)) + '%';
+    return rms;
+  }
+
   function showPitch(frequency) {
     if (frequency === null) {
       recent = [];
       noteLabel.textContent = '—';
       frequencyLabel.textContent = '声を出してください';
-      centsLabel.textContent = '音程を計測中';
+      centsLabel.textContent = '— cent';
+      needle.style.left = '50%';
+      direction.textContent = '音程を検出中';
       return;
     }
     recent.push(frequency);
-    if (recent.length > 5) recent.shift();
+    if (recent.length > 4) recent.shift();
     const sorted = [...recent].sort((a, b) => a - b);
     const stable = sorted[Math.floor(sorted.length / 2)];
-    const semitones = 69 + 12 * Math.log2(stable / 440);
-    const midi = Math.round(semitones);
-    const noteName = NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
-    const cents = Math.round(100 * (semitones - midi));
-    noteLabel.textContent = noteName;
+    const deltaCents = Math.round(1200 * Math.log2(stable / targetFrequency));
+    noteLabel.textContent = getNoteName(stable);
     frequencyLabel.textContent = stable.toFixed(1) + ' Hz';
-    centsLabel.textContent = (cents > 0 ? '+' : '') + cents + ' cent';
+    centsLabel.textContent = (deltaCents > 0 ? '+' : '') + deltaCents + ' cent';
+    // ±50 cents displayed across a centered meter (6–94%).
+    needle.style.left = (50 + Math.max(-50, Math.min(50, deltaCents)) * 0.88) + '%';
+    if (Math.abs(deltaCents) <= 8) {
+      direction.textContent = '目標音とほぼ一致';
+      needle.style.background = '#53c7a9';
+    } else if (Math.abs(deltaCents) > 50) {
+      direction.textContent = deltaCents < 0 ? '目標音より低い（目盛り範囲外）' : '目標音より高い（目盛り範囲外）';
+      needle.style.background = '#fff';
+    } else {
+      direction.textContent = deltaCents < 0 ? 'もう少し高く' : 'もう少し低く';
+      needle.style.background = '#fff';
+    }
+  }
+
+  function stopGuide() {
+    if (guideTimer) clearTimeout(guideTimer);
+    guideTimer = 0;
+    if (guideOsc) {
+      try { guideOsc.stop(); } catch (_) {}
+      try { guideOsc.disconnect(); } catch (_) {}
+    }
+    if (guideGain) { try { guideGain.disconnect(); } catch (_) {} }
+    guideOsc = null;
+    guideGain = null;
+    guideUntil = 0;
+    guideButton.disabled = !active;
+  }
+
+  async function playGuide() {
+    if (!active || !context || guideOsc) return;
+    guideButton.disabled = true;
+    try {
+      if (context.state !== 'running') await context.resume();
+      const now = context.currentTime + 0.01;
+      guideOsc = context.createOscillator();
+      guideGain = context.createGain();
+      guideOsc.type = 'sine';
+      guideOsc.frequency.setValueAtTime(targetFrequency, now);
+      guideGain.gain.setValueAtTime(0, now);
+      guideGain.gain.linearRampToValueAtTime(0.095, now + 0.045);
+      guideGain.gain.setValueAtTime(0.095, now + 0.52);
+      guideGain.gain.linearRampToValueAtTime(0, now + 0.72);
+      guideOsc.connect(guideGain);
+      guideGain.connect(context.destination);
+      guideOsc.start(now);
+      guideOsc.stop(now + 0.74);
+      guideUntil = performance.now() + 950;
+      status.textContent = 'ガイド音を再生中（計測を一時停止）';
+      guideTimer = setTimeout(() => {
+        stopGuide();
+        if (active) status.textContent = 'マイク入力中';
+      }, 850);
+    } catch (error) {
+      stopGuide();
+      status.textContent = 'ガイド音を再生できません: ' + (error.message || error.name);
+    }
   }
 
   function scan(now) {
     if (!active || !analyser) return;
     frameId = requestAnimationFrame(scan);
-    if (now - lastScan < 100) return;
+    if (now - lastScan < 75) return;
     lastScan = now;
     try {
       analyser.getFloatTimeDomainData(samples);
-      showPitch(estimatePitch(samples, context.sampleRate));
+      const rms = updateInputLevel(samples);
+      // Keep speaker guide audio out of the pitch estimator.
+      if (now < guideUntil) {
+        showPitch(null);
+        return;
+      }
+      const pitch = estimatePitch(samples, context.sampleRate);
+      showPitch(pitch);
+      status.textContent = pitch !== null
+        ? '音程を検出中'
+        : rms >= 0.014 ? '声を検知・音程を解析中' : 'マイク入力待ち（レベルを確認してください）';
     } catch (error) {
       status.textContent = '解析エラー: ' + error.message;
       void stop();
@@ -108,6 +206,7 @@
 
   async function releaseDevices() {
     active = false;
+    stopGuide();
     cancelAnimationFrame(frameId);
     frameId = 0;
     if (source) { try { source.disconnect(); } catch (_) {} }
@@ -126,6 +225,9 @@
   async function stop() {
     await releaseDevices();
     panel.hidden = true;
+    document.body.classList.remove('voice-mode');
+    if (window.kotodamaSetVoiceLabels) window.kotodamaSetVoiceLabels(false);
+    document.querySelector('.title-sub').textContent = 'CHAKRA TUNER';
     status.textContent = 'マイク未使用';
     button.textContent = 'VOICE: START';
   }
@@ -136,8 +238,14 @@
     button.disabled = true;
     toneButton.disabled = true;
     soundButton.disabled = true;
+    document.body.classList.add('voice-mode');
+    if (window.kotodamaSetVoiceLabels) window.kotodamaSetVoiceLabels(true);
+    document.querySelector('.title-sub').textContent = 'VOICE TUNER';
+    if (window.kotodamaGetVoiceTarget) setTarget(window.kotodamaGetVoiceTarget());
+    guideButton.disabled = true;
     status.textContent = 'マイクの許可を確認中…';
     panel.hidden = false;
+    showPitch(null);
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('HTTPSとマイク対応ブラウザーが必要です');
@@ -167,7 +275,8 @@
       toneButton.disabled = true;
       soundButton.disabled = true;
       button.textContent = 'VOICE: STOP';
-      status.textContent = 'マイク入力のみ解析中（録音・送信なし）';
+      guideButton.disabled = false;
+      status.textContent = 'マイク入力中（録音・送信なし）';
       showPitch(null);
       lastScan = 0;
       frameId = requestAnimationFrame(scan);
@@ -178,6 +287,7 @@
         ? 'マイクが許可されていません。ブラウザー設定を確認してください。'
         : '開始できません: ' + (error.message || error.name);
       status.textContent = message;
+      guideButton.disabled = true;
       button.textContent = 'VOICE: START';
     } finally {
       button.disabled = false;
@@ -186,9 +296,11 @@
   }
 
   button.addEventListener('click', () => { void (active ? stop() : start()); });
+  guideButton.addEventListener('click', () => { void playGuide(); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && active) void stop();
   });
   window.addEventListener('pagehide', () => { if (active || stream) void stop(); });
-  window.kotodamaVoiceTuner = { estimatePitch, stop, get active() { return active; } };
+  window.kotodamaVoiceTuner = { estimatePitch, stop, setTarget, get active() { return active; } };
+  if (window.kotodamaGetVoiceTarget) setTarget(window.kotodamaGetVoiceTarget());
 })();
