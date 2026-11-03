@@ -67,6 +67,15 @@
         #voice-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; width: min(94%, 410px); gap: clamp(10px, 1.8dvh, 19px); padding-block: clamp(6px, 1.2dvh, 14px); box-sizing: border-box; text-align: center; color: #fff; font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         #voice-target-heading { font-size: clamp(12px, 2.7vw, 16px); letter-spacing: 2px; opacity: .8; }
         #voice-target-freq { font-size: clamp(17px, 4vw, 23px); color: var(--accent-color); font-weight: 700; }
+        /* Voice mode is independent of the last selected chakra's accent. */
+        body.voice-mode .title-sub,
+        body.voice-mode #voice-target-freq,
+        body.voice-mode #voice-target-heading { color: #D9E1EC; }
+        body.voice-mode #voice-freq,
+        body.voice-mode #voice-cents { color: var(--voice-pitch-color, #D9E1EC); transition: color 0.24s ease; }
+        body.voice-mode #voice-level-fill { background: #91A5BA; }
+        body.voice-mode #voice-direction,
+        body.voice-mode #voice-status { color: #D9E1EC; }
         #voice-note { font-size: clamp(60px, 16vw, 94px); font-weight: 800; line-height: 1; letter-spacing: 1px; color: #fff; -webkit-text-stroke: 1.7px var(--voice-outline-color, #91A5BA); paint-order: stroke fill; text-shadow: 0 0 12px var(--voice-outline-color, #91A5BA), 0 0 27px var(--voice-outline-color, #91A5BA); transition: -webkit-text-stroke-color 0.24s ease, text-shadow 0.24s ease; }
         #voice-freq { font-size: clamp(18px, 4vw, 23px); font-variant-numeric: tabular-nums; }
         #voice-cents { font-size: clamp(15px, 3.5vw, 20px); font-variant-numeric: tabular-nums; }
@@ -270,9 +279,10 @@
     let boostOn = true;
     function getTargetVolume() {
         const base = isWindows ? -12 : -3;
-        // 1.3x amplitude (~+2.3 dB) over the previous default BOOST level.
-        // Keep BOOST OFF unchanged and retain the final output limiter.
-        return boostOn ? base + 11.3 : base - 20;
+        // User-selected +6 dB (~2x signal amplitude) over the last BOOST
+        // preset. The -1 dB limiter caps peaks, so acoustic output may
+        // increase less than 2x, especially with strong source patches.
+        return boostOn ? base + 17.3 : base - 20;
     }
 
     const bonjiEl = document.getElementById('bonji-bg');
@@ -721,12 +731,16 @@
             btn.setAttribute('aria-label', active ? '音階 ' + names[index] : 'チャクラ ' + chakraData[index].id);
         });
     };
-    window.kotodamaSetVoiceSelection = selectedIndex => {
+    window.kotodamaSetVoiceSelection = (selectedIndex, noteColor = null) => {
         document.querySelectorAll('#chakra-selector .chakra-btn').forEach((btn, index) => {
             const selected = index === selectedIndex;
+            // Natural-note buttons follow the voice palette in voice mode.
+            // Chakra mode continues using its original seven colors.
+            const color = document.body.classList.contains('voice-mode') && noteColor
+                ? noteColor : chakraData[index].strColor;
             btn.classList.toggle('active', selected);
-            btn.style.backgroundColor = selected ? chakraData[index].strColor : 'rgba(255,255,255,0.1)';
-            btn.style.boxShadow = selected ? '0 0 10px ' + chakraData[index].strColor : 'none';
+            btn.style.backgroundColor = selected ? color : 'rgba(255,255,255,0.1)';
+            btn.style.boxShadow = selected ? '0 0 10px ' + color : 'none';
         });
     };
     window.kotodamaStopSound = async () => {
