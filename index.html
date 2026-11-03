@@ -24,7 +24,7 @@
         
         #webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
         #bonji-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Sans Siddham', sans-serif; font-size: 45dvh; color: rgba(255,255,255,0.09); -webkit-text-stroke: 1.4px rgba(255,255,255,0.65); text-shadow: 0 0 9px rgba(255,255,255,0.45), 0 0 22px var(--accent-color), 0 0 48px var(--accent-color); opacity: 0.66; z-index: 1; pointer-events: none; will-change: opacity; transition: opacity 0.5s ease-out; }
-        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 3px solid rgba(255,255,255,0.54); border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.45), 0 0 23px var(--accent-color), 0 0 58px var(--accent-color), inset 0 0 17px var(--accent-color); z-index: -1; opacity: 0.84; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
+        #chakra-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); width: clamp(240px, 75vw, 320px); height: clamp(240px, 75vw, 320px); border: 3px solid rgba(255,255,255,0.54); border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.45), 0 0 23px var(--accent-color), 0 0 58px var(--accent-color), inset 0 0 17px var(--accent-color); z-index: 0; opacity: 0.84; pointer-events: none; will-change: transform, opacity; transition: transform 0.5s ease-out; }
         
         #ui-layer { position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: space-between; align-items: center; height: calc(var(--vh, 1vh) * 100); padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); padding-left: 5%; padding-right: 5%; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.46), transparent 31%, transparent 68%, rgba(0,0,0,0.75)); pointer-events: none; touch-action: none; }
         
@@ -34,6 +34,8 @@
         .title-sub { font-family: 'Inter', sans-serif; font-size: clamp(9px, 3vw, 12px); font-weight: 400; letter-spacing: 6px; color: var(--accent-color); margin-top: 0.5vh; transition: color 0.5s; }
         
         #central-node { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; position: relative; min-height: 0; padding-block: clamp(5px, 1.15dvh, 13px); box-sizing: border-box; }
+        /* Ring remains above the overlay but below the central text. */
+        #central-node > :not(#chakra-ring) { position: relative; z-index: 1; }
         .ruby-text { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(16px, 5vw, 22px); letter-spacing: 6px; opacity: 0.8; height: 1.5em; display: flex; align-items: flex-end; justify-content: center; margin-bottom: -1dvh; }
         .kanji { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; font-size: clamp(80px, 25dvh, 140px); color: var(--accent-color); transition: color 0.5s; height: 1.2em; display: flex; align-items: center; justify-content: center; margin-bottom: 1dvh; line-height: 1; }
         .on-guide { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: clamp(18px, 6vw, 26px); letter-spacing: 4px; font-weight: 400; color: #EEE; height: 1.5em; display: flex; align-items: center; justify-content: center; }
