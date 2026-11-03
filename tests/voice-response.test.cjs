@@ -52,7 +52,8 @@ assert.ok(result[0].jumpAt3 > result[1].jumpAt3 &&
   'higher stability must follow a note transition more slowly');
 
 const tracker = factory();
-for (let t=1000; t<1600; t+=75) {
+tracker.sample(440, 1000); // establish A4 before crossing the semitone border
+for (let t=1075; t<1600; t+=75) {
   tracker.sample(440 * Math.pow(2, 0.51/12), t);
 }
 assert.equal(tracker.sample(440 * Math.pow(2, 0.51/12), 1600).noteMidi, 69,
