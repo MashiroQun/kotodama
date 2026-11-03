@@ -147,6 +147,9 @@
       if (typeof window.kotodamaStopSound === 'function') {
         await window.kotodamaStopSound();
       }
+      // stopTuning() re-enables its button on completion.
+      toneButton.disabled = true;
+      soundButton.disabled = true;
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
         video: false
