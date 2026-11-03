@@ -100,7 +100,10 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(createdInputGains[0].gain.value, 32, '8x to 32x');
   assert.equal(el('btn-mic-gain').textContent, '感度 ×32');
   el('btn-mic-gain').handlers.click();
-  assert.equal(createdInputGains[0].gain.value, 4, '32x wraps to 4x');
+  assert.equal(createdInputGains[0].gain.value, 64, '32x moves to 64x');
+  assert.equal(el('btn-mic-gain').textContent, '感度 ×64');
+  el('btn-mic-gain').handlers.click();
+  assert.equal(createdInputGains[0].gain.value, 4, '64x wraps to 4x');
   assert.equal(el('btn-mic-gain').textContent, '感度 ×4');
   el('btn-mic-gain').handlers.click();
   assert.equal(createdInputGains[0].gain.value, 8, '4x returns to initial 8x');
