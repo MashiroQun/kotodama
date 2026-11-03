@@ -106,7 +106,9 @@ const script = fs.readFileSync(path.join(__dirname, '..', 'voice-tuner.js'), 'ut
   assert.equal(createdInputGains[0].gain.value, 8, '4x returns to initial 8x');
   assert.equal(el('btn-mic-gain').textContent, '感度 ×8');
   assert.equal(labels.notation, 'solfege');
-  frames.shift()(1100);
+  frames.shift()(1100); // first frame qualifies as a possible voice onset
+  assert.equal(el('voice-note').textContent, '—', 'one isolated pitch frame is ignored');
+  frames.shift()(1200); // second consistent frame confirms the voice
   assert.equal(el('voice-note').textContent, 'ラ3');
   assert.equal(el('voice-note').style.webkitTextStrokeColor, '#7896FF',
     'A3 should have a blue outline');
