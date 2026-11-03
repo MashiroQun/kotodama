@@ -1,7 +1,8 @@
 /*
  * Kotodama PWA update manager.
  * UI follows Rin Player: checking / new version / latest / error / apply.
- * One service-worker registration is injected by VitePWA; do not register here.
+ * VitePWA builds the Workbox sw.js; one registration is explicitly shared
+ * between startup and the UPDATE button to avoid a first-run race.
  */
 (() => {
   'use strict';
@@ -17,6 +18,7 @@
   if (!modal || !icon || !title || !message || !actions || !closeButton || !applyButton) return;
 
   let registration = null;
+  let registerPromise = null;
   let pendingWorker = null;
   let checking = false;
   let applying = false;
@@ -35,7 +37,8 @@
     preparing: ['更新を準備中です', '新しいデータを取得しています。しばらくしてからもう一度確認してください。', '↻', 'close'],
     applying: ['更新しています...', 'アプリを新しいバージョンに切り替えています。', '⟳', null],
     error: ['更新を確認できませんでした', '通信状態を確認し、もう一度お試しください。', '!', 'close'],
-    unsupported: ['更新を確認できません', 'この環境ではアプリの自動更新に対応していません。', '!', 'close'],
+    unsupported: ['更新を確認できません', 'このブラウザーではサービスワーカーを利用できません。', '!', 'close'],
+    installing: ['更新機能を準備中です', '初回起動のため、アプリの更新機能を登録しています。少ししてから再度確認してください。', '↻', 'close'],
     stalled: ['更新の反映を待っています', 'アプリをいったん終了して開き直すと、更新される場合があります。', '↻', 'close']
   };
 
@@ -136,6 +139,26 @@
     }
   }
 
+  function ensureRegistration() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    if (registration) return Promise.resolve(registration);
+    if (!registerPromise) {
+      // No competing injected registerSW.js script. register() resolves even on
+      // the very first visit when getRegistration() would still return null.
+      registerPromise = navigator.serviceWorker.register('./sw.js', {
+        scope: './',
+        updateViaCache: 'none'
+      }).then(reg => {
+        watchRegistration(reg);
+        return reg;
+      }).catch(error => {
+        registerPromise = null; // allow retry after a transient network error
+        throw error;
+      });
+    }
+    return registerPromise;
+  }
+
   async function checkForUpdate() {
     if (checking || applying) return;
     const requestId = ++updateRequestId;
@@ -146,20 +169,15 @@
     checking = true;
     showUpdateModal('checking');
     try {
-      // getRegistration() avoids hanging forever on serviceWorker.ready
-      // when a developer preview has no installed worker.
-      const reg = registration || await navigator.serviceWorker.getRegistration();
+      const reg = await ensureRegistration();
       if (!reg) {
         if (requestId === updateRequestId) showUpdateModal('unsupported');
         return;
       }
-      watchRegistration(reg);
 
-      if (!getWaitingWorker(reg)) {
+      if (!getWaitingWorker(reg) && reg.active) {
         await reg.update();
         if (!getWaitingWorker(reg)) {
-          // Similar to Rin Player's short settling interval, while also
-          // distinguishing "still installing" from "no update found".
           await new Promise(resolve => setTimeout(resolve, 3500));
         }
       }
@@ -167,6 +185,8 @@
       if (requestId !== updateRequestId) return;
       if (getWaitingWorker(reg)) {
         showUpdateModal('available');
+      } else if (!reg.active) {
+        showUpdateModal('installing');
       } else if (reg.installing) {
         showUpdateModal('preparing');
       } else {
@@ -212,14 +232,14 @@
       // an already-running tuner. Changes found later remain pending.
       startupCheck = true;
       setTimeout(() => { startupCheck = false; }, 6000);
-      navigator.serviceWorker.ready.then(async reg => {
-        watchRegistration(reg);
+      ensureRegistration().then(async reg => {
+        if (!reg) return;
         if (getWaitingWorker(reg) && !playbackIsBusy()) {
           activateWaitingWorker(reg, true);
           return;
         }
         try {
-          await reg.update();
+          if (reg.active) await reg.update();
         } catch (error) {
           console.warn('Startup update check unavailable:', error);
         }
