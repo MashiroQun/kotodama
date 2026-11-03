@@ -44,6 +44,7 @@ function node(type) {
 }
 const Tone = {
   context:{lookAhead:0, latencyHint:'', sampleRate:48000},
+  immediate(){return 1},
   getContext() { return {rawContext:{
     sampleRate:48000,
     createBuffer(_channels,len){
