@@ -48,7 +48,10 @@
     for (let lag = 1; lag <= maxLag; lag++) {
       running += differences[lag];
       normalized[lag] = running === 0 ? 1 : differences[lag] * lag / running;
-      if (lag >= minLag && normalized[lag] < 0.16) {
+    }
+    // Compute the full curve before looking ahead to the local minimum.
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      if (normalized[lag] < 0.16) {
         while (lag + 1 <= maxLag && normalized[lag + 1] < normalized[lag]) lag++;
         chosen = lag;
         break;
@@ -131,6 +134,8 @@
     if (active || starting) return;
     starting = true;
     button.disabled = true;
+    toneButton.disabled = true;
+    soundButton.disabled = true;
     status.textContent = 'マイクの許可を確認中…';
     panel.hidden = false;
     try {
