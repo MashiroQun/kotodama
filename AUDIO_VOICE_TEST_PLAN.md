@@ -176,3 +176,34 @@
 - 更新機能のモック試験：非対応／更新あり／更新適用と一回のみ再読込／起動時の待機更新／最新版／通信エラー／インストール遅延を確認。
 - 実機のオフライン起動、iPhoneのWebKitのSWライフサイクル、旧キャッシュからの移行は未検証であり、公開成功だけでは実動作の保証にならない。
 - 再現用：`node tests/pwa-update.test.cjs`。関連資料：Rin Playerリポジトリmainの`script.js`および`vite.config.js`。
+
+## 音程の過敏な揺れとPWA更新の初回登録修正（2026-11-03）
+
+### 実機フィードバック
+- 音声チューナーの検出が細かく反応しすぎる。入力レベルの反応はそのままにしつつ、音程表示の変化を少し緩やかにし、ユーザーが調整できるようにする。
+- UPDATEを押すと「この環境ではアプリの自動更新に対応していません」と表示。Safari/iPhoneでのサービスワーカー非対応と決めつけない。
+
+### 参考にした公開実装・理論
+- pyymenta/tuner（React/Vite、Pitchy）：音程信頼度を考慮したゲーティング、EMAによる周波数平滑化、セント表示の効率的更新。 https://github.com/pyymenta/tuner
+- SysAdminDoc/GuitarTuner：YINによる音程検出、フレーム間のオクターブ・ヒステリシス、安定フレーム平滑化、ノイズゲート。 https://github.com/SysAdminDoc/GuitarTuner
+- MDNの`ServiceWorkerContainer.register`：同じスコープの登録操作は既存登録を返すこと、初回登録は登録完了とページを制御するまでに差があること。 https://developer.mozilla.org/ja/docs/Web/API/ServiceWorkerContainer/register
+- vite-plugin-pwaの登録ガイド：`injectRegister: false`ではアプリが単一の登録処理を実装し、ビルドで生成されたWorkboxの`sw.js`を登録可能。 https://vite-pwa-org.netlify.app/guide/register-service-worker
+
+### 追加実装
+- マイク入力の増幅は従来と同じデフォルト8倍。マイクレベルの表示も従来どおり即時更新。
+- 音程解析の結果だけを「中央値3フレーム + セントに対応する対数音階上の指数移動平均（EMA）」で平滑化。実際の大きな音程変化では追従を早め、小さな変動では揺れを抑える。
+- **追従：敏感（約65ms）／標準（約220ms、初期値）／安定（約450ms）**をボイスモードに追加。マイク感度を変えずに調整できる。フリー／目標音の表示で共通利用。
+- フリーの音名／発光色は半音境界のヒステリシスで安定化。無音判定が1〜2フレーム出ても、短時間は前の値を維持する（初期標準は約190ms）。無音が続けば表示をクリア。
+- ボイス側のボタンは2列×2行にして、VOICE STOP・ガイド音・感度・追従を均等配置。
+
+### UPDATE不具合修正
+- 旧コードは`getRegistration()`が`null`のとき、実際にはSW初回登録が未完了でも「ブラウザー非対応」と扱った。デプロイ環境や旧キャッシュが原因かは実機未確定だが、判定ロジックには不備があった。
+- 今回はVitePWAの自動`registerSW.js`挿入を無効にし、`pwa-update.js`が`navigator.serviceWorker.register('./sw.js', {scope:'./',updateViaCache:'none'})`を**単一の共有Promise**で実行。アプリ起動時とUPDATEボタンから同じ経路を使い、重複登録や初回チェックの競合を避ける。
+- 初回登録中なら「更新機能を準備中です」、登録自体が失敗したら「更新を確認できませんでした」、`navigator.serviceWorker`のAPIが本当に存在しない場合だけ「非対応」を表示。
+- 更新が待機状態になったら以前と同じ確認ダイアログ（あとで／更新する）。既存の音声再生中の更新適用抑制と再読み込みガードは維持。
+
+### 検証
+- `tests/voice-response.test.cjs`：敏感＞標準＞安定の揺れ抑制、音程遷移速度の差、半音境界のヒステリシス、リセット、初期8倍維持を確認。
+- `tests/voice-modes.test.cjs`：VOICEモード起動・フリーのガイド無効・目標音のガイド有効、追従設定3段階の操作を確認。
+- `tests/pwa-update.test.cjs`：初回登録、登録エラー、既存待機SW、起動時更新、最新版、遅延インストール、二重リロード防止をモック検証。
+- 実機iPhoneでは「追従：標準」時の声のビブラート／音階切替、UPDATE初回登録と数日後の実更新、Safariとホーム画面PWAの違いを再確認する。モック試験と公開デプロイ成功だけではWebKitの動作は証明できない。
