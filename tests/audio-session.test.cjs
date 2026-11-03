@@ -28,6 +28,7 @@ assert.match(source, /Tone\.context\.lookAhead = 0\.035/, 'schedule with some he
 assert.match(source, /padPitchTimer = setTimeout/, 'pad note changes must be gain-gated');
 
 const nodes = [];
+let bufferBuildCount = 0;
 function node(type) {
   const n = {
     type, disposed: 0, started: 0, stopped: 0,
@@ -45,7 +46,10 @@ const Tone = {
   context:{lookAhead:0, latencyHint:'', sampleRate:48000},
   getContext() { return {rawContext:{
     sampleRate:48000,
-    createBuffer(_channels,len){return{getChannelData(){return new Float32Array(len)}}}
+    createBuffer(_channels,len){
+      bufferBuildCount++;
+      return{getChannelData(){return new Float32Array(len)}};
+    }
   }}; }
 };
 for (const name of ['Volume','Limiter','Gain','Freeverb','PingPongDelay','Filter',
@@ -82,6 +86,7 @@ for (const mode of modes) {
 }
 assert.ok(nodes.every(n=>n.disposed===1), 'no audio node leaks');
 assert.equal(nodes.filter(n=>n.type==='Oscillator'||n.type==='Player').length,modes.length);
+assert.equal(bufferBuildCount,1, 'reuse one generated pad buffer through repeated sessions');
 const pad=harness.pad();
 harness.shift(1.5);
 assert.equal(pad.gain.actions.at(-1).value,0.12, 'first duck the audio gain');
@@ -91,8 +96,9 @@ flush();
 assert.equal(pad.player.playbackRate,1.5, 'rate switches after the gain is reduced');
 assert.equal(pad.gain.actions.at(-1).value,1, 'gain rises after rate change');
 harness.shift(2);
-assert.equal(timers.size,1);
+harness.shift(2.5);
+assert.equal(timers.size,1, 'rapid pitch changes must cancel the stale transition');
 harness.stop();
 assert.equal(timers.size,0, 'stop must cancel pending shift timer');
 assert.ok(nodes.every(n=>n.disposed===1), 'all repeated sources cleaned exactly once');
-console.log('PASS: 7 audio cycles, pad pitch duck/restore, no pending shift after stop, GPU reuse');
+console.log('PASS: 7 audio cycles, one pad buffer, latest-only pitch shift, timer cleanup, GPU reuse');
