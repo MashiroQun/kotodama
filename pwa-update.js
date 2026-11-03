@@ -105,7 +105,9 @@
     pendingWorker = reg.waiting || worker;
     if (startupCheck && !checking && !playbackIsBusy()) {
       activateWaitingWorker(reg, true);
-    } else if (checking || (!modal.hidden && currentState === 'preparing')) {
+    } else if (checking || (!modal.hidden &&
+               (currentState === 'preparing' || currentState === 'latest'))) {
+      // If installation finishes late, replace any premature "latest" result.
       showUpdateModal('available');
     }
   }
