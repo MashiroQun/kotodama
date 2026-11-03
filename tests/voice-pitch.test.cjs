@@ -51,4 +51,4 @@ for (const sr of [44100, 48000]) {
   assert.ok(Math.abs(1200 * Math.log2(detect(boosted, sr) / frequency)) < 15,
     '8x boost should recover low-level 220Hz signal');
 }
-console.log('PASS: 26 voice pitch cases (44.1/48kHz; sine, harmonics, silence, low-level microphone gain)');
+console.log('PASS: 28 voice pitch cases (44.1/48kHz; sine, harmonics, silence, low-level microphone gain)');
