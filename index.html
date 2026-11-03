@@ -75,6 +75,10 @@
         #voice-level-fill { height: 100%; background: var(--accent-color); width: 0; transition: width 90ms linear; }
         #voice-status { min-height: 2em; font-size: 12px; opacity: .88; }
         #btn-guide, #btn-mic-gain { display: none; }
+        #voice-options { display: none; gap: 2%; margin-bottom: 1dvh; width: 100%; }
+        #voice-options .toggle-btn { min-height: 35px; }
+        body.voice-mode #voice-options { display: flex; }
+        body.voice-mode #voice-options #btn-voice-mode { flex: 1.25; }
         body.voice-mode #bonji-bg, body.voice-mode #chakra-ring, body.voice-mode #yomi-display,
         body.voice-mode #kanji-display, body.voice-mode #on-display, body.voice-mode #note-display,
         body.voice-mode #meaning, body.voice-mode #action-btn, body.voice-mode #debug-panel,
@@ -120,6 +124,11 @@
         </div>
         <div id="control-panel">
             <div id="meaning">土 / 基盤 / 生命 / 会陰</div>
+            <div id="voice-options">
+                <button id="btn-voice-mode" class="toggle-btn" type="button">フリー</button>
+                <button id="btn-voice-notation" class="toggle-btn" type="button">表示: ドレミ</button>
+                <button id="btn-voice-octave" class="toggle-btn" type="button" disabled>音域: 自動</button>
+            </div>
             <div id="chakra-selector"></div>
             <button id="action-btn">TUNING START</button>
             <div id="debug-panel">
@@ -190,7 +199,9 @@
     let boostOn = true;
     function getTargetVolume() {
         const base = isWindows ? -12 : -3;
-        return boostOn ? base : base - 20;
+        // Approx. 2x waveform amplitude when BOOST is on (+6dB).
+        // Master limiter remains the final stage to avoid clipping.
+        return boostOn ? base + 6 : base - 20;
     }
 
     const bonjiEl = document.getElementById('bonji-bg');
@@ -234,10 +245,11 @@
         Tone.context.latencyHint = "interactive";
 
         // New output chain for each playback session. Do not reuse previous FX tails.
-        sessionVolume = new Tone.Volume(getTargetVolume()).toDestination();
-        limiter = new Tone.Limiter(-1).connect(sessionVolume);
-        dryGain = new Tone.Gain(0).connect(limiter); // FXを通さない音源比較用
-        reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(limiter);
+        // Gain before limiter, so +6dB BOOST cannot bypass the output limiter.
+        limiter = new Tone.Limiter(-1).toDestination();
+        sessionVolume = new Tone.Volume(getTargetVolume()).connect(limiter);
+        dryGain = new Tone.Gain(0).connect(sessionVolume); // FXを通さない音源比較用
+        reverb = new Tone.Freeverb({ roomSize: 0.35, dampening: 4500 }).connect(sessionVolume);
         delay = new Tone.PingPongDelay({ delayTime: 0.35, feedback: 0.05, wet: 0.1 }).connect(reverb);
         lpf = new Tone.Filter({ frequency: 8000, type: "lowpass", rolloff: -12 }).connect(delay);
         hpf = new Tone.Filter({ frequency: 150, type: "highpass", rolloff: -24 }).connect(lpf);
@@ -588,7 +600,11 @@
         const b = document.createElement('button');
         b.className = 'chakra-btn';
         b.innerText = c.id;
-        b.onclick = () => { currentChakraIndex = i; updateAudioAndUI(); };
+        b.onclick = () => {
+            if (window.kotodamaVoiceTuner?.active && window.kotodamaVoiceTuner.mode === 'free') return;
+            currentChakraIndex = i;
+            updateAudioAndUI();
+        };
         document.getElementById('chakra-selector').appendChild(b);
     });
 
@@ -603,10 +619,21 @@
     window.kotodamaSoundIsRunning = () => isTuning || isStopping;
     // VOICEは基本音階C3〜B3に固定し、瞑想側の+1・ソルフェ設定を変更しない。
     window.kotodamaGetVoiceTarget = () => Tone.Frequency(chakraData[currentChakraIndex].note).toFrequency();
-    window.kotodamaSetVoiceLabels = active => {
+    window.kotodamaSetVoiceLabels = (active, notation = 'solfege') => {
+        const names = notation === 'solfege'
+            ? ['ド', 'レ', 'ミ', 'ファ', 'ソ', 'ラ', 'シ']
+            : ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
         document.querySelectorAll('#chakra-selector .chakra-btn').forEach((btn, index) => {
-            btn.innerText = active ? chakraData[index].note.slice(0, -1) : String(chakraData[index].id);
-            btn.setAttribute('aria-label', active ? '目標音 ' + chakraData[index].note : 'チャクラ ' + chakraData[index].id);
+            btn.innerText = active ? names[index] : String(chakraData[index].id);
+            btn.setAttribute('aria-label', active ? '音階 ' + names[index] : 'チャクラ ' + chakraData[index].id);
+        });
+    };
+    window.kotodamaSetVoiceSelection = selectedIndex => {
+        document.querySelectorAll('#chakra-selector .chakra-btn').forEach((btn, index) => {
+            const selected = index === selectedIndex;
+            btn.classList.toggle('active', selected);
+            btn.style.backgroundColor = selected ? chakraData[index].strColor : 'rgba(255,255,255,0.1)';
+            btn.style.boxShadow = selected ? '0 0 10px ' + chakraData[index].strColor : 'none';
         });
     };
     window.kotodamaStopSound = async () => {
