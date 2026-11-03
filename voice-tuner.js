@@ -35,8 +35,8 @@
   ];
   let responseIndex = 2; // 安定 is the default; 敏感／標準 remain selectable.
   let smoothedMidi = null, selectedMidi = null, lastSmoothAt = 0, lastGoodPitchAt = 0;
-  const inputSensitivity = [16, 32, 64];
-  let sensitivityIndex = 0; // 16x starting point; 32x / 64x for quiet iPad microphones.
+  const inputSensitivity = [4, 8, 32];
+  let sensitivityIndex = 1; // 8x starting point; 4x for strong headset mics, 32x for quiet iPads.
   let targetFrequency = 130.81278265, baseTargetFrequency = 130.81278265;
   let lastDetectedHz = null, currentGuideFrequency = null;
   let mode = 'free', notation = 'solfege', octaveIndex = 0;
