@@ -35,8 +35,8 @@
   ];
   let responseIndex = 2; // 安定 is the default; 敏感／標準 remain selectable.
   let smoothedMidi = null, selectedMidi = null, lastSmoothAt = 0, lastGoodPitchAt = 0;
-  const inputSensitivity = [4, 8, 32];
-  let sensitivityIndex = 1; // 8x starting point; 4x for strong headset mics, 32x for quiet iPads.
+  const inputSensitivity = [4, 8, 32, 64];
+  let sensitivityIndex = 1; // 8x default, with 4x for headsets and 32x/64x for quiet iPads.
   // Keep pitch detection responsive; only the *display* is stabilized.
   let visualCents = null, visualCentsAt = 0, visualTargetMidi = null;
   let targetFrequency = 130.81278265, baseTargetFrequency = 130.81278265;
