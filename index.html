@@ -159,6 +159,46 @@
         document.documentElement.style.setProperty('--vh', `${vh}px`);
     }
     setFillHeight();
+
+    // iOS Safari / home-screen PWA: disable accidental pinch and smart zoom.
+    // Preserve rapid repeated taps on real controls.
+    function blockViewportZoom(event) {
+        if (event.cancelable) event.preventDefault();
+    }
+    for (const type of ['gesturestart', 'gesturechange']) {
+        document.addEventListener(type, blockViewportZoom, { passive: false });
+    }
+    document.addEventListener('touchmove', event => {
+        if (event.touches && event.touches.length > 1) blockViewportZoom(event);
+    }, { passive: false });
+
+    let lastBackgroundTap = null;
+    document.addEventListener('touchend', event => {
+        if (!event.changedTouches || event.changedTouches.length !== 1 ||
+            (event.touches && event.touches.length !== 0)) {
+            lastBackgroundTap = null;
+            return;
+        }
+        const target = event.target;
+        if (target && target.closest &&
+            target.closest('button, a, input, select, textarea, label')) {
+            lastBackgroundTap = null;
+            return;
+        }
+        const touch = event.changedTouches[0];
+        const now = performance.now();
+        if (lastBackgroundTap && now - lastBackgroundTap.time < 320 &&
+            Math.hypot(touch.clientX - lastBackgroundTap.x,
+                       touch.clientY - lastBackgroundTap.y) < 30) {
+            blockViewportZoom(event);
+            lastBackgroundTap = null;
+        } else {
+            lastBackgroundTap = { time: now, x: touch.clientX, y: touch.clientY };
+        }
+    }, { passive: false });
+    document.addEventListener('touchcancel', () => {
+        lastBackgroundTap = null;
+    }, { passive: true });
     window.addEventListener('resize', setFillHeight);
     window.addEventListener('orientationchange', () => {
         setTimeout(setFillHeight, 100);
