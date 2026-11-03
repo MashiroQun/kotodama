@@ -17,6 +17,7 @@
   const levelFill = document.getElementById('voice-level-fill');
   const guideButton = document.getElementById('btn-guide');
   const sensitivityButton = document.getElementById('btn-mic-gain');
+  const smoothingButton = document.getElementById('btn-voice-smoothing');
   const modeButton = document.getElementById('btn-voice-mode');
   const notationButton = document.getElementById('btn-voice-notation');
   const octaveButton = document.getElementById('btn-voice-octave');
@@ -26,6 +27,13 @@
   let stream = null, context = null, source = null, inputGain = null, analyser = null;
   let samples = null, frameId = 0, lastScan = 0, active = false, starting = false;
   let recent = [];
+  const RESPONSE_MODES = [
+    { label: '敏感', tau: 65, holdMs: 90, hysteresis: 5 },
+    { label: '標準', tau: 220, holdMs: 190, hysteresis: 10 },
+    { label: '安定', tau: 450, holdMs: 330, hysteresis: 15 }
+  ];
+  let responseIndex = 1;
+  let smoothedMidi = null, selectedMidi = null, lastSmoothAt = 0, lastGoodPitchAt = 0;
   const inputSensitivity = [1, 4, 8, 16];
   let sensitivityIndex = 2; // 8x is the starting point; manual override for noisy devices.
   let targetFrequency = 130.81278265, baseTargetFrequency = 130.81278265;
@@ -197,9 +205,47 @@
     return rms;
   }
 
-  function showPitch(frequency) {
+  function resetPitchFilter() {
+    recent = [];
+    smoothedMidi = null;
+    selectedMidi = null;
+    lastSmoothAt = 0;
+    lastGoodPitchAt = 0;
+  }
+
+  function stabilizePitch(frequency, now) {
+    // Median of three frames removes isolated jumps.
+    // EMA in semitones smooths by approximately the same cents at all octaves.
+    recent.push(frequency);
+    if (recent.length > 3) recent.shift();
+    const sorted = [...recent].sort((a, b) => a - b);
+    const sampleMidi = freqToMidi(sorted[Math.floor(sorted.length / 2)]);
+    const settings = RESPONSE_MODES[responseIndex];
+    if (smoothedMidi === null) {
+      smoothedMidi = sampleMidi;
+      selectedMidi = Math.round(sampleMidi);
+    } else {
+      const dt = lastSmoothAt ? Math.max(12, Math.min(250, now - lastSmoothAt)) : 75;
+      const difference = Math.abs(sampleMidi - smoothedMidi);
+      const tau = difference > 0.85 ? settings.tau * 0.45 : settings.tau;
+      const alpha = 1 - Math.exp(-dt / tau);
+      smoothedMidi += (sampleMidi - smoothedMidi) * alpha;
+      if (Math.abs(smoothedMidi - selectedMidi) >= 0.5 + settings.hysteresis / 100) {
+        selectedMidi = Math.round(smoothedMidi);
+      }
+    }
+    lastSmoothAt = now;
+    lastGoodPitchAt = now;
+    return { frequency: midiToFreq(smoothedMidi), noteMidi: selectedMidi };
+  }
+
+  function showPitch(frequency, force = false, now = performance.now()) {
     if (frequency === null) {
-      recent = [];
+      if (!force && lastGoodPitchAt > 0 &&
+          now - lastGoodPitchAt < RESPONSE_MODES[responseIndex].holdMs) {
+        return; // brief pitch-dropout should not flicker the UI
+      }
+      resetPitchFilter();
       lastDetectedHz = null;
       noteLabel.textContent = '—';
       frequencyLabel.textContent = '声を出してください';
@@ -220,16 +266,13 @@
       return;
     }
 
-    recent.push(frequency);
-    if (recent.length > 4) recent.shift();
-    const sorted = [...recent].sort((a, b) => a - b);
-    const stable = sorted[Math.floor(sorted.length / 2)];
+    const stabilized = stabilizePitch(frequency, now);
+    const stable = stabilized.frequency;
     lastDetectedHz = stable;
 
     if (mode === 'free') {
-      // Chromatic mode follows the closest note, including black-key pitches.
-      targetFrequency = midiToFreq(Math.round(freqToMidi(stable)));
-      updateSelectedButton(Math.round(freqToMidi(stable)));
+      targetFrequency = midiToFreq(stabilized.noteMidi);
+      updateSelectedButton(stabilized.noteMidi);
     } else {
       targetFrequency = getManualTarget();
       updateSelectedButton(Math.round(freqToMidi(baseTargetFrequency)));
@@ -238,8 +281,9 @@
     showTarget(targetFrequency);
 
     const deltaCents = Math.round(1200 * Math.log2(stable / targetFrequency));
-    noteLabel.textContent = getNoteName(stable);
-    setVoiceNoteOutline(stable);
+    noteLabel.textContent = getNoteName(mode === 'free'
+      ? midiToFreq(stabilized.noteMidi) : stable);
+    setVoiceNoteOutline(mode === 'free' ? targetFrequency : stable);
     frequencyLabel.textContent = stable.toFixed(1) + ' Hz';
     centsLabel.textContent = (deltaCents > 0 ? '+' : '') + deltaCents + ' cent';
     needle.style.left = (50 + Math.max(-50, Math.min(50, deltaCents)) * 0.88) + '%';
@@ -350,11 +394,11 @@
       const rms = updateInputLevel(samples);
       // Keep speaker guide audio out of the pitch estimator.
       if (now < guideUntil) {
-        showPitch(null);
+        showPitch(null, true, now);
         return;
       }
       const pitch = estimatePitch(samples, context.sampleRate);
-      showPitch(pitch);
+      showPitch(pitch, false, now);
       status.textContent = pitch !== null
         ? '音程を検出中'
         : rms >= 0.014 ? '声を検知・音程を解析中' : 'マイク入力待ち（レベルを確認してください）';
@@ -379,7 +423,7 @@
     stream = null;
     if (context) { try { await context.close(); } catch (_) {} }
     context = null;
-    recent = [];
+    resetPitchFilter();
     toneButton.disabled = false;
     soundButton.disabled = false;
   }
@@ -477,16 +521,16 @@
   modeButton.addEventListener('click', () => {
     if (guideAudio) stopGuide();
     mode = mode === 'free' ? 'target' : 'free';
-    recent = [];
+    resetPitchFilter();
     lastDetectedHz = null;
-    showPitch(null);
+    showPitch(null, true);
     updateControls();
   });
   notationButton.addEventListener('click', () => {
     notation = notation === 'solfege' ? 'letter' : 'solfege';
     const previous = lastDetectedHz;
-    recent = [];
-    if (previous === null) showPitch(null);
+    resetPitchFilter();
+    if (previous === null) showPitch(null, true);
     else showPitch(previous);
     updateControls();
   });
@@ -494,18 +538,24 @@
     if (mode !== 'target') return;
     octaveIndex = (octaveIndex + 1) % octaves.length;
     const previous = lastDetectedHz;
-    recent = [];
-    if (previous === null) showPitch(null);
+    resetPitchFilter();
+    if (previous === null) showPitch(null, true);
     else showPitch(previous);
     updateControls();
+  });
+  smoothingButton.addEventListener('click', () => {
+    responseIndex = (responseIndex + 1) % RESPONSE_MODES.length;
+    smoothingButton.textContent = '追従: ' + RESPONSE_MODES[responseIndex].label;
+    if (active) status.textContent = '音程追従: ' + RESPONSE_MODES[responseIndex].label +
+      '（マイク感度は変更しません）';
   });
   sensitivityButton.addEventListener('click', () => {
     sensitivityIndex = (sensitivityIndex + 1) % inputSensitivity.length;
     const value = inputSensitivity[sensitivityIndex];
     sensitivityButton.textContent = '感度 ×' + value;
     if (inputGain) inputGain.gain.value = value;
-    recent = [];
-    showPitch(null);
+    resetPitchFilter();
+    showPitch(null, true);
     if (active) status.textContent = 'マイク感度 ×' + value + '（感度を上げると雑音も増えます）';
   });
   document.addEventListener('visibilitychange', () => {
@@ -515,7 +565,8 @@
   window.kotodamaVoiceTuner = {
     estimatePitch, stop, setTarget, generateGuideWav,
     get active() { return active; },
-    get mode() { return mode; }
+    get mode() { return mode; },
+    get response() { return RESPONSE_MODES[responseIndex].label; }
   };
   if (window.kotodamaGetVoiceTarget) setTarget(window.kotodamaGetVoiceTarget());
 })();
