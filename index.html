@@ -54,7 +54,7 @@
         .toggle-btn:active { background: rgba(255,255,255,0.3); }
         #debug-panel, #bottom-utilities { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
         #audio-tools { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
-        body.voice-mode #audio-tools { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        body.voice-mode #audio-tools { grid-template-columns: repeat(2, minmax(0,1fr)); }
         #control-panel .toggle-btn { width: 100%; }
         #ui-layer, #control-panel, #central-node, button, .chakra-btn, .toggle-btn { touch-action: none; }
         @media (max-height: 720px) {
@@ -80,7 +80,7 @@
         #voice-level { height: 5px; background: rgba(255,255,255,.15); width: 75%; border-radius: 5px; overflow: hidden; }
         #voice-level-fill { height: 100%; background: var(--accent-color); width: 0; transition: width 90ms linear; }
         #voice-status { min-height: 2em; font-size: 12px; opacity: .88; }
-        #btn-guide, #btn-mic-gain { display: none; }
+        #btn-guide, #btn-mic-gain, #btn-voice-smoothing { display: none; }
         #voice-options { display: none; grid-template-columns: repeat(3, minmax(0,1fr)); gap: clamp(6px, 1.6vw, 10px); width: 100%; }
         #voice-options .toggle-btn { min-height: 42px; }
         body.voice-mode #voice-options { display: grid; }
@@ -88,7 +88,7 @@
         body.voice-mode #kanji-display, body.voice-mode #on-display, body.voice-mode #note-display,
         body.voice-mode #meaning, body.voice-mode #action-btn, body.voice-mode #debug-panel,
         body.voice-mode #bottom-utilities, body.voice-mode #btn-sound { display: none !important; }
-        body.voice-mode #btn-guide, body.voice-mode #btn-mic-gain { display: block; }
+        body.voice-mode #btn-guide, body.voice-mode #btn-mic-gain, body.voice-mode #btn-voice-smoothing { display: block; }
         body.voice-mode #control-panel { background: rgba(12,12,18,.66); gap: clamp(12px, 2dvh, 19px); padding-block: clamp(18px, 2.5dvh, 26px); }
         body.voice-mode #chakra-selector .chakra-btn { font-size: clamp(14px, 4vw, 19px); }
         button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -166,6 +166,7 @@
                 <button id="btn-voice" class="toggle-btn" type="button" aria-label="ボイスチューナーを起動">VOICE: START</button>
                 <button id="btn-guide" class="toggle-btn" type="button" disabled>ガイド音を鳴らす</button>
                 <button id="btn-mic-gain" class="toggle-btn" type="button" aria-label="マイク感度を切り替える">感度 ×8</button>
+                <button id="btn-voice-smoothing" class="toggle-btn" type="button" aria-label="音程表示の追従速度を切り替える">追従: 標準</button>
             </div>
         </div>
     </div>
