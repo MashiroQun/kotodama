@@ -270,9 +270,9 @@
     let boostOn = true;
     function getTargetVolume() {
         const base = isWindows ? -12 : -3;
-        // BOOST starts +9dB above the base level (+3dB versus the previous build).
-        // The final master limiter protects against excessive signal peaks.
-        return boostOn ? base + 9 : base - 20;
+        // 1.3x amplitude (~+2.3 dB) over the previous default BOOST level.
+        // Keep BOOST OFF unchanged and retain the final output limiter.
+        return boostOn ? base + 11.3 : base - 20;
     }
 
     const bonjiEl = document.getElementById('bonji-bg');
